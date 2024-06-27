@@ -1,6 +1,6 @@
 {
     "name": "danieltm/http-security",
-    "description": "complemento de seguranca para Origins Gramework",
+    "description": "complemento de seguranca para Origins Framework",
     "type": "library",
     "require": {
         "danieltm/origins": "^1.0"
