@@ -1,10 +1,13 @@
 <?php
-
+    namespace Daniel\HttpSecurity;
     use Daniel\Origins\DependencyManager;
     use Daniel\Origins\HttpMethod;
     use Daniel\Origins\Inject;
     use Daniel\Origins\OnInit;
-use Daniel\Origins\Request;
+    use Daniel\Origins\Request;
+    use InvalidArgumentException;
+    use Override;
+    use ReflectionClass;
 
     class HttpSecurityConfigurarInit extends OnInit{
 
@@ -156,10 +159,6 @@ use Daniel\Origins\Request;
     class SessionPolice{
         const STATEFULL = 0;
         const STATELESS = 1;
-    }
-
-    abstract class SecurityFilterChain{
-        public abstract function filterPerRequest(Request $req);
     }
 
 ?>

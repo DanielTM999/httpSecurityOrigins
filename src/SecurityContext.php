@@ -1,4 +1,6 @@
 <?php
+    namespace Daniel\HttpSecurity;
+    use Daniel\HttpSecurity\AuthContext;
 
     class SecurityContext{   
         private static ?AuthContext $context = null;
@@ -40,11 +42,4 @@
             }
         }
     }
-
-    interface AuthContext{
-        function getUser():string;
-        function getPassword():string;
-        function getRoles():array;
-    }
-
 ?>
