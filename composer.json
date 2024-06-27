@@ -1,0 +1,20 @@
+{
+    "name": "daniel/http-security",
+    "description": "complemento de seguranca para Origins Gramework",
+    "type": "library",
+    "require": {
+        "danieltm/origins": "^1.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Daniel\\HttpSecurity\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Daniel Teixeira Melo"
+        }
+    ],
+    "minimum-stability": "stable"
+}

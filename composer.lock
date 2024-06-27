@@ -1,0 +1,57 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "72f1a5ead86f09d488ce73e1fd1c9dd0",
+    "packages": [
+        {
+            "name": "danieltm/origins",
+            "version": "V1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/DanielTM999/origins.git",
+                "reference": "ca955536d6796df0bd370fb51b8106ce95a4c3fb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/ca955536d6796df0bd370fb51b8106ce95a4c3fb",
+                "reference": "ca955536d6796df0bd370fb51b8106ce95a4c3fb",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Daniel\\Origins\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Daniel Teixeira Melo"
+                }
+            ],
+            "support": {
+                "issues": "https://github.com/DanielTM999/origins/issues",
+                "source": "https://github.com/DanielTM999/origins/tree/V1.0"
+            },
+            "time": "2024-06-27T01:39:06+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.6.0"
+}
