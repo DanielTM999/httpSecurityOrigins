@@ -1,5 +1,5 @@
 {
-    "name": "daniel/http-security",
+    "name": "danieltm/http-security",
     "description": "complemento de seguranca para Origins Gramework",
     "type": "library",
     "require": {
