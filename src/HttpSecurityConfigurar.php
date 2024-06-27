@@ -25,7 +25,7 @@ use Daniel\Origins\Request;
         private bool $anyPublic = true;
         
         public function sessionPolice(int $police): HttpSecurityConfigurar{
-            $this->sessionPolice = $police;
+            self::$sessionPolice = $police;
             return $this;
         }
 
