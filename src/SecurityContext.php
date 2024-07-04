@@ -12,6 +12,8 @@
             if (isset($_SESSION["SessionPolice"]) && $_SESSION["SessionPolice"] !== SessionPolice::STATELESS) {
                 if (isset($_SESSION["Securitycontext"])) {
                     return unserialize($_SESSION["Securitycontext"]);
+                }else{
+                    return self::$context;
                 }
             } else {
                 return self::$context;
