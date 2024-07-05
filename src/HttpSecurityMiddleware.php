@@ -72,7 +72,7 @@
                     if($this->isAuth($r->getRoles())){
                         return true;
                     }
-                    throw new Exception("not authorized ");
+                    throw new AuthorizationException("not authorized ");
                 }else{
                     return true;
                 }
@@ -101,7 +101,7 @@
                         }
                     }
                 }
-                throw new Exception("not authorized [not conteins permission Role]");
+                throw new AuthorizationException("not authorized [not conteins permission Role]");
             }else{
                 return true;
             }
@@ -117,6 +117,14 @@
             }
         }
 
+    }
+
+    class AuthorizationException extends Exception{
+
+        public function __construct($message = "Authorization error", $code = 0, Exception $previous = null)
+        {
+            parent::__construct($message, $code, $previous);
+        }
     }
 
 ?>
