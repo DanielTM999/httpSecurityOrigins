@@ -94,14 +94,10 @@
             }
 
             if(!empty($roles)){
-                foreach($roles as $role){
-                    foreach($userDatails->getRoles() as $roleUser){
-                        if($role === $roleUser){
-                            return true;
-                        }
-                    }
+                if (!empty(array_intersect($roles, $userDatails->getRoles()))) {
+                    return true;
                 }
-                throw new AuthorizationException("not authorized [not conteins permission Role]");
+                throw new AuthorityAuthorizationException("not authorized [not conteins permission Role]");
             }else{
                 return true;
             }
@@ -122,6 +118,14 @@
     class AuthorizationException extends Exception{
 
         public function __construct($message = "Authorization error", $code = 0, Exception $previous = null)
+        {
+            parent::__construct($message, $code, $previous);
+        }
+    }
+
+    class AuthorityAuthorizationException extends Exception{
+
+        public function __construct($message = "Authorization Roles error", $code = 0, Exception $previous = null)
         {
             parent::__construct($message, $code, $previous);
         }
