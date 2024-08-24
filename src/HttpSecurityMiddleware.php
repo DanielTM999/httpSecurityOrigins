@@ -59,8 +59,20 @@
 
             if(!$this->httpManager->ispublic()){
                 if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
-                    echo "auth";
-                    return;
+                    $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
+                }else{
+                    $_SESSION["SessionPolice"] = SessionPolice::STATEFULL;
+                }
+
+                $userDatails = SecurityContext::getContext();
+                if(!isset($userDatails)){
+                    throw new AuthorizationException("not authorized ");
+                }else{
+                    if(!empty($roles)){
+                        if (empty(array_intersect($roles, $userDatails->getRoles()))) {
+                            throw new AuthorityAuthorizationException("not authorized [not conteins permission Role]");
+                        }
+                    }
                 }
             }
         }
