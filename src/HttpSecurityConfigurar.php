@@ -8,7 +8,6 @@
     use Override;
     use ReflectionClass;
 
-    
     #[FilterPriority(9999999)]
     class HttpSecurityConfigurarInit extends OnInit{
 

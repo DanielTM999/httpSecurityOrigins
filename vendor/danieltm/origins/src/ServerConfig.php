@@ -1,6 +1,7 @@
 <?php
 
     namespace Daniel\Origins;
+
     use Override;
     use ReflectionClass;
     use ReflectionProperty;
