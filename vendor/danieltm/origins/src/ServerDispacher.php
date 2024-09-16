@@ -2,10 +2,12 @@
     namespace Daniel\Origins;
 
     use Exception;
-    use Override;
+use MiddlewarePrority;
+use Override;
     use ReflectionClass;
     use ReflectionMethod;
     use ReflectionProperty;
+    use Throwable;
 
     class ServerDispacher extends Dispacher{
         public static $routes = [];
@@ -33,8 +35,21 @@
                         self::$controllerErrorReflect = $reflect;
                     }
                 }
+
+                if(!isset($_SESSION["controllerAdvice"]) || empty($_SESSION["controllerAdvice"])){
+                    $this->addToControllerAdvice($reflect);
+                }
             }
 
+            usort(self::$middlewares, function($a, $b){
+                $attributesA = $a->getAttributes(MiddlewarePrority::class);
+                $attributesB = $b->getAttributes(MiddlewarePrority::class);
+
+                $priorityA = isset($attributesA[0]) ? $attributesA[0]->newInstance()->exception : 0;
+                $priorityB = isset($attributesB[0]) ? $attributesB[0]->newInstance()->exception : 0;
+
+                return $priorityB <=> $priorityA;
+            });
         }
 
         #[Override]
@@ -72,16 +87,7 @@
                         }
                         $this->ExecuteMethod($method, $instance, $req);
                     } catch (\Throwable $th) {
-                        try {
-                            if(isset(self::$controllerErrorReflect)){
-                                self::$controllerError = $this->getInstanceBy(self::$controllerErrorReflect, $Dmanager);
-                                self::$controllerError->onError($th);
-                            }else{
-                                throw $th;  
-                            }
-                        } catch (\Throwable $th1) {
-                            throw $th1;
-                        }
+                        $this->executeControllerAdviceException($th, $Dmanager);
                     }
                     return;
                 }
@@ -112,34 +118,56 @@
 
         private function mappingControllerClass(ReflectionClass $reflect){
             $methods = $reflect->getMethods();
+            $attribute = $reflect->getAttributes(Controller::class);
+            $args = $attribute[0]->getArguments();
+            $location = "";
+            if(isset($args[0])){
+                $location = $args[0];
+                if (!str_starts_with($location, '/')) {
+                    $location = '/' . $location;
+                }
+            }
             foreach ($methods as $method){
-               $this->findMethodHttp($method, $reflect, "");
+               $this->findMethodHttp($method, $reflect, $location);
             }
 
         }
 
-        private function findMethodHttp($method, $reflect, $pathMapping){
+        private function findMethodHttp(ReflectionMethod $method, $reflect, $pathMapping){
             $attributes = $method->getAttributes();
+            $namemethod = $method->getName();
             foreach ($attributes as $attribute){
                 $atrubute_name = $attribute->getName();
                 switch ($atrubute_name) {
                     case Get::class:
                         $args = $attribute->getArguments();
+                        if(strpos($args[0], "[action]") !== false){
+                            $args[0] = str_replace("[action]", $namemethod, $args[0]);
+                        }
                         $path = $pathMapping . $args[0];
                         $this->addRouteGet($path, $reflect, $method);
                         break;
                     case Post::class:
                         $args = $attribute->getArguments();
+                        if(strpos($args[0], "[action]") !== false){
+                            $args[0] = str_replace("[action]", $namemethod, $args[0]);
+                        }
                         $path = $pathMapping . $args[0];
                         $this->addRoutePost($path, $reflect, $method);
                         break;
                     case Delete::class:
                         $args = $attribute->getArguments();
+                        if(strpos($args[0], "[action]") !== false){
+                            $args[0] = str_replace("[action]", $namemethod, $args[0]);
+                        }
                         $path = $pathMapping . $args[0];
                         $this->addRouteDelete($path, $reflect, $method);
                         break;
                     case Put::class:
                         $args = $attribute->getArguments();
+                        if(strpos($args[0], "[action]") !== false){
+                            $args[0] = str_replace("[action]", $namemethod, $args[0]);
+                        }
                         $path = $pathMapping . $args[0];
                         $this->addRoutePut($path, $reflect, $method);
                         break;
@@ -336,7 +364,24 @@
         private function ExecuteMiddleware(Middleware $entity, Request $req){
             $entity->onPerrequest($req);
         }
+
+        private function addToControllerAdvice(ReflectionClass $reflection){
+            $atribute = $reflection->getAttributes(ControllerAdvice::class);
+            if(isset($atribute) && !empty($atribute)){
+                $_SESSION["controllerAdvice"][] = $reflection;
+            }
+        }
+
+        private function executeControllerAdviceException(Throwable $throwable, DependencyManager $Dmanager){
+            if(isset(self::$controllerErrorReflect)){
+                self::$controllerError = $this->getInstanceBy(self::$controllerErrorReflect, $Dmanager);
+                self::$controllerError->onError($throwable);
+            }else{
+                throw $throwable;  
+            }
+        }
     }
+
 
     
 ?>

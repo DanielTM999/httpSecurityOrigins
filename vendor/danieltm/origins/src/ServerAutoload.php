@@ -18,7 +18,12 @@
             if ($vendorPos !== false) {
                 $dirBase = substr($dirBase, 0, $vendorPos);
             }
+            $_ENV["base.dir"] = $dirBase;
             $this->autoloadFromDirectory($dirBase);
+            $this->loadedFiles = array_reverse($this->loadedFiles);
+            foreach($this->loadedFiles as $file){
+                require_once $file;
+            }
         }
 
         private function autoloadFromDirectory($directory){
@@ -29,14 +34,15 @@
                     $execute = true;
                     if(isset($_ENV["load.ignore"])){
                         $ignore = $_ENV["load.ignore"];
-                        $ignoreList = explode("/", $ignore);
+                        $ignoreList = explode("@", $ignore);
                         foreach($ignoreList as $v){
+                            $v = str_replace('/', '\\', $v);
                             if(strpos($directory, $v) !== false){
                                 $execute = false;
                             }
                         }
                     }
-                    if (strpos($directory, "composer") !== false || strpos($directory, "git") !== false || strpos($directory, "autoload") !== false || strpos($directory, "danieltm/origins") !== false) {
+                    if (strpos($directory, "composer") !== false || strpos($directory, "git") !== false || strpos($directory, "autoload") !== false || strpos($directory, "danieltm/origins" ) !== false || strpos($directory, "http-security\\vendor") !== false) {
                         $execute = false;
                     }
                     if ($item === '.' || $item === '..') {
@@ -62,7 +68,6 @@
         {      
             try{
                 if (!in_array($file, $this->loadedFiles)) {
-                    require_once $file;
                     $this->loadedFiles[] = $file;
                 }
             } catch (\Throwable $th) {

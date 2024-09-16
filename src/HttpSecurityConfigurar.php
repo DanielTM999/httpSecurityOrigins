@@ -6,9 +6,11 @@
     use Daniel\Origins\OnInit;
     use Daniel\Origins\Request;
     use InvalidArgumentException;
+    use MiddlewarePrority;
     use Override;
     use ReflectionClass;
 
+    #[MiddlewarePrority(999)]
     class HttpSecurityConfigurarInit extends OnInit{
 
         #[Inject]

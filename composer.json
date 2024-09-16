@@ -3,7 +3,7 @@
     "description": "complemento de seguranca para Origins Framework",
     "type": "library",
     "require": {
-        "danieltm/origins": "^1.0"
+        "danieltm/origins": "^1.5"
     },
     "license": "MIT",
     "autoload": {
