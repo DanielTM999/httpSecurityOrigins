@@ -7,18 +7,18 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/DanielTM999/origins.git",
-                "reference": "943fe5ed18707417401b30d39a01909e9b518327"
+                "reference": "678807bf0328730929a0d60dafa00aea15519d10"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/943fe5ed18707417401b30d39a01909e9b518327",
-                "reference": "943fe5ed18707417401b30d39a01909e9b518327",
+                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/678807bf0328730929a0d60dafa00aea15519d10",
+                "reference": "678807bf0328730929a0d60dafa00aea15519d10",
                 "shasum": ""
             },
             "require": {
                 "php": "^8.0"
             },
-            "time": "2024-09-16T18:03:03+00:00",
+            "time": "2024-09-16T18:14:26+00:00",
             "type": "library",
             "installation-source": "source",
             "autoload": {
