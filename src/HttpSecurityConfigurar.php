@@ -1,16 +1,14 @@
 <?php
     namespace Daniel\HttpSecurity;
     use Daniel\Origins\DependencyManager;
-    use Daniel\Origins\HttpMethod;
     use Daniel\Origins\Inject;
     use Daniel\Origins\OnInit;
-    use Daniel\Origins\Request;
+    use FilterPriority;
     use InvalidArgumentException;
-    use MiddlewarePrority;
     use Override;
     use ReflectionClass;
 
-    #[MiddlewarePrority(999)]
+    #[FilterPriority(9999999)]
     class HttpSecurityConfigurarInit extends OnInit{
 
         #[Inject]
