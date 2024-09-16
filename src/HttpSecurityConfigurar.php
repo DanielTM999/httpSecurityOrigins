@@ -1,9 +1,9 @@
 <?php
     namespace Daniel\HttpSecurity;
     use Daniel\Origins\DependencyManager;
+    use Daniel\Origins\FilterPriority;
     use Daniel\Origins\Inject;
     use Daniel\Origins\OnInit;
-    use FilterPriority;
     use InvalidArgumentException;
     use Override;
     use ReflectionClass;
