@@ -77,11 +77,11 @@
             }
         }
 
-        private function authAction($routeSecurity, $requestPath, $r, Request $req,bool $verifiMethod = false){
+        private function authAction($routeSecurity, $requestPath, RequestMatcher $r, Request $req, bool $verifiMethod = false){
             if($routeSecurity === $requestPath || $verifiMethod){
                 $this->applyFilters($req);
                 if($r->getNeedAuth()){
-                    if($this->isAuth($r->getRoles())){
+                    if($this->isAuth($r->getRoles(), $r->getenvironment())){
                         return true;
                     }
                     throw new AuthorizationException("not authorized ");
@@ -92,7 +92,7 @@
             return false;
         }
 
-        public function isAuth($roles): bool{
+        public function isAuth($roles, $environment): bool{
             if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
                 $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
             }else{
@@ -103,6 +103,14 @@
 
             if(!isset($userDatails)){
                 return false;
+            }
+
+            if($environment !== null){
+                if($userDatails->getEnvironment() === null){
+                    throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]");
+                }else if($userDatails->getEnvironment() !== $environment){
+                    throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]");
+                }
             }
 
             if(!empty($roles)){
@@ -143,4 +151,11 @@
         }
     }
 
+    class EnvironmentAuthorizationException extends Exception{
+
+        public function __construct($message = "Authorization Environment error", $code = 0, Exception $previous = null)
+        {
+            parent::__construct($message, $code, $previous);
+        }
+    }
 ?>

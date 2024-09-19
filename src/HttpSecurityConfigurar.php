@@ -20,7 +20,7 @@
             $this->manager->addDependency(HttpSecurityConfigurar::class, $obj);
         }
     }
-
+    
     class HttpSecurityConfigurar{
         private static int $sessionPolice = SessionPolice::STATELESS;
         private static $requests = [];
@@ -77,13 +77,15 @@
         private $httpMethod;
         private bool $needAuth;
         private array $roles;
+        private string $environment;
 
-        public function __construct(string $route, $httpMethod, bool $permit, array $roles)
+        public function __construct(string $route, $httpMethod, bool $permit, array $roles, string $environment)
         {
             $this->route = $route;
             $this->httpMethod = $httpMethod;
             $this->needAuth = $permit;
             $this->roles = $roles;
+            $this->environment = $environment;
         }
 
         public function getRoute(): string{
@@ -99,6 +101,9 @@
         public function getRoles(): array{
             return $this->roles;
         }
+        public function getenvironment(): string{
+            return $this->environment;
+        }
     }
 
     class RequestMatcherAction{
@@ -109,8 +114,8 @@
             $this->config = $config;
         }
 
-        public function Request(string $route, $method = null): RequestMatcherActionAuthorize{
-            return new RequestMatcherActionAuthorize($route, $this->config, $method);
+        public function Request(string $route, $method = null, $environment = null): RequestMatcherActionAuthorize{
+            return new RequestMatcherActionAuthorize($route, $this->config, $method, $environment);
         }
     }
 
@@ -118,20 +123,22 @@
         private HttpSecurityConfigurar $config;
         private string $route;
         private $method;
+        private string $environment;
 
-        public function __construct(string $route, HttpSecurityConfigurar $config, $method = null)
+        public function __construct(string $route, HttpSecurityConfigurar $config, $method = null, $environment = null)
         {
             $this->route = $route;
             $this->method = $method;
             $this->config = $config;
+            $this->environment = $environment;
         }
 
         public function authenticate(array $roles = []): void{
-            $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, true, $roles));
+            $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, true, $roles, $this->environment));
         }
 
         public function permitAll(): void{
-            $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, false, []));
+            $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, false, [], $this->environment));
         }
     }
 

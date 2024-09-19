@@ -6,6 +6,7 @@
         function getUser():string;
         function getPassword():string;
         function getRoles():array;
+        function getEnvironment(): string;
     }
 
 ?>
