@@ -36,7 +36,7 @@ Crie uma classe que estenda `OnInit` para configurar as dependências iniciais:
                 ->RequestPatterns(function(RequestMatcherAction $e) {
                     $e->Request("/")->authenticate(["adm"]);
                     $e->Request("/teste")->authenticate();
-                    $e->Request("/teste2", , HttpMethod::DELETE)->authenticate(["adm"]);
+                    $e->Request("/teste2", HttpMethod::DELETE, "env_teste")->authenticate(["adm"]);
                 })
                 ->AddFilterBefore($this->httpfilter)
                 //->AddFilterBefore(new FilterChain()) --> não irá ter ajuda do injetor de dependecias do Origin(injeção manul nesse caso);
