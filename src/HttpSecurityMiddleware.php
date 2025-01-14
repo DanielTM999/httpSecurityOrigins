@@ -78,8 +78,8 @@
         }
 
         private function authAction($routeSecurity, $requestPath, RequestMatcher $r, Request $req, bool $verifiMethod = false){
+            $this->applyFilters($req);
             if($routeSecurity === $requestPath || $verifiMethod){
-                $this->applyFilters($req);
                 if($r->getNeedAuth()){
                     if($this->isAuth($r->getRoles(), $r->getenvironment())){
                         return true;

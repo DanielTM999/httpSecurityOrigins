@@ -41,7 +41,7 @@
             self::$requests[] = $requestMatcher;
         }
 
-        public function AddFilterBefore(object $filter): HttpSecurityConfigurar{
+        public function AddFilterBefore(object &$filter): HttpSecurityConfigurar{
             if ($filter instanceof SecurityFilterChain) {
                 self::$filters[] = $filter;
             } else {
