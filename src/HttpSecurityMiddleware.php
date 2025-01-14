@@ -93,6 +93,7 @@
         }
 
         public function isAuth($roles, $environment): bool{
+            $environment = $environment ?? "";
             if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
                 $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
             }else{
@@ -105,7 +106,7 @@
                 return false;
             }
 
-            if($environment !== null){
+            if($environment !== ""){
                 if($userDatails->getEnvironment() === null){
                     throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]");
                 }else if($userDatails->getEnvironment() !== $environment){

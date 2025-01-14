@@ -130,7 +130,7 @@
             $this->route = $route;
             $this->method = $method;
             $this->config = $config;
-            $this->environment = $environment;
+            $this->environment = $environment ?? "";
         }
 
         public function authenticate(array $roles = []): void{
