@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "14ec3a37b946b4499ee5946fb9d1cdf9",
+    "content-hash": "5f9d3e7776008778effe9f1ee0d158ab",
     "packages": [
         {
             "name": "danieltm/origins",
-            "version": "V1.5.1",
+            "version": "V1.6.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DanielTM999/origins.git",
-                "reference": "98f4be18ce670a90108fa56166efcaf75f2dd93e"
+                "reference": "3e5c5f2b915a57fd0062557e63ff3bad31d8ac70"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/98f4be18ce670a90108fa56166efcaf75f2dd93e",
-                "reference": "98f4be18ce670a90108fa56166efcaf75f2dd93e",
+                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/3e5c5f2b915a57fd0062557e63ff3bad31d8ac70",
+                "reference": "3e5c5f2b915a57fd0062557e63ff3bad31d8ac70",
                 "shasum": ""
             },
             "require": {
@@ -40,9 +40,9 @@
             ],
             "support": {
                 "issues": "https://github.com/DanielTM999/origins/issues",
-                "source": "https://github.com/DanielTM999/origins/tree/V1.5.1"
+                "source": "https://github.com/DanielTM999/origins/tree/V1.6.0"
             },
-            "time": "2024-09-16T19:14:49+00:00"
+            "time": "2025-01-14T01:58:16+00:00"
         }
     ],
     "packages-dev": [],

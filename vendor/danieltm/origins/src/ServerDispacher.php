@@ -11,36 +11,75 @@
     class ServerDispacher extends Dispacher{
         public static $routes = [];
         private static $middlewares = [];
+        private static $aspects = [];
         private static ReflectionClass $controllerErrorReflect;
         private static ControllerAdvice $controllerError;
 
         #[Override]
         public function map(): void{
-            $classes = get_declared_classes();
-            foreach ($classes as $class){
-                $reflect = new ReflectionClass($class);
-                $atribute = $reflect->getAttributes(Controller::class);
+            if(isset($_SESSION["origins.loaders"])){
+                $loaders = $_SESSION["origins.loaders"];    
+                $controllers = $loaders["controllers"] ?? [];
+                $middlewares = $loaders["middlewares"] ?? [];
+                $aspects = $loaders["aspects"] ?? [];
+                $routes = $loaders["routes"] ?? [];
+                $controllerAdvice = $loaders["controllerAdvice"] ?? null;
 
-                if (isset($atribute) && !empty($atribute)){
-                    $this->mappingControllerClass(new ReflectionClass($class));
+                if(isset($controllerAdvice)){
+                    $reflect = new ReflectionClass($controllerAdvice);
+                    self::$controllerErrorReflect = $reflect;
                 }
 
-                $parentClass = $reflect->getParentClass();
-                if ($parentClass !== false) {
-                    $parentClassName = $parentClass->getName();
-                    if($parentClassName === Middleware::class){
-                        self::$middlewares[] = $reflect;
-                    }else if($parentClassName === ControllerAdvice::class){
-                        self::$controllerErrorReflect = $reflect;
+                if(empty($routes)){
+                    foreach($controllers as $controller){
+                        $reflect = new ReflectionClass($controller);
+                        $this->mappingControllerClass($reflect);
                     }
+                    if(isset($_ENV["enviroment"]) && $_ENV["enviroment"] === "production"){
+                        $this->addRoutesToCash();
+                    }
+                }else{
+                    $reflectMap = [];
+                    foreach($routes as $route){
+                        $className = $route["class"];
+                        if (isset($reflectMap[$className])) {
+                            $reflectController = $reflectMap[$className];
+                        } else {
+                            $reflectController = new ReflectionClass($className);
+                            $reflectMap[$className] = $reflectController;
+                        }   
+                        $reflectMethod = $reflectController->getMethod($route["action"]["name"]);
+                        self::$routes[] = new Router($route["path"], $route["httpMethod"], $reflectController, $reflectMethod);
+                    }
+                    unset($reflectMap);
                 }
 
-                if(!isset($_SESSION["controllerAdvice"]) || empty($_SESSION["controllerAdvice"])){
-                    $this->addToControllerAdvice($reflect);
+                foreach($middlewares as $middleware){
+                    $reflect = new ReflectionClass($middleware);
+                    self::$middlewares[] = $reflect;
                 }
+
+                foreach($aspects as $aspect){
+                    $reflect = new ReflectionClass($aspect);
+                    self::$aspects[] = $reflect;
+                }
+
+            }else{
+                $this->mapIfNotloaded();
             }
-
+            
             usort(self::$middlewares, function($a, $b){
+                $attributesA = $a->getAttributes(FilterPriority::class);
+                $attributesB = $b->getAttributes(FilterPriority::class);
+
+                $priorityAArgs0 = isset($attributesA[0]) ? $attributesA[0]->getArguments() : [0];
+                $priorityBArgs0 = isset($attributesB[0]) ? $attributesB[0]->getArguments() : [0];
+                $priorityA = isset($priorityAArgs0[0]) ? $priorityAArgs0[0] : 0;
+                $priorityB = isset($priorityBArgs0[0]) ? $priorityBArgs0[0] : 0;
+
+                return $priorityB <=> $priorityA;
+            });
+            usort(self::$aspects, function($a, $b){
                 $attributesA = $a->getAttributes(FilterPriority::class);
                 $attributesB = $b->getAttributes(FilterPriority::class);
 
@@ -55,6 +94,7 @@
 
         #[Override]
         public function dispach(DependencyManager $Dmanager): void{
+            $hostClient = $_SERVER['HTTP_HOST'];
             $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $requestMethod = $_SERVER['REQUEST_METHOD'];
             $headers = getallheaders();
@@ -66,29 +106,39 @@
             }
 
             foreach (self::$routes as $route){
-                if ($route->method === $requestMethod && $route->path === $requestPath){
+                $pattern = preg_quote($route->path, '#');
+                $pattern = preg_replace('/\\\{([^}]+)\\\}/', '([^/]+)', $pattern);
+                $pattern = '#^' . $pattern . '$#';
 
-                    if ($jsonData !== null) {
-                        $req = new Request($headers, $jsonData, "");
-                    } else {
-                        if ($requestMethod === "GET") {
-                            $req = new Request($headers, $_GET, "");
-                        } else {
-                            $req = new Request($headers, $_POST, "");
-                        }
+                if ($route->method === $requestMethod && preg_match($pattern, $requestPath, $matches)){
+                    array_shift($matches);
+
+                    $pathVariables = [];
+                    if (preg_match_all('/\{([^\/]+)\}/', $route->path, $varNames)) {
+                        $pathVariables = array_combine($varNames[1], $matches);
                     }
+
+                    $req = ($jsonData !== null)
+                        ? new Request($headers, $jsonData, $pathVariables, $requestPath, $hostClient)
+                        : new Request($headers, ($requestMethod === "GET" ? $_GET : $_POST), $pathVariables, $requestPath, $hostClient);
+
 
                     $instance = $this->getInstanceBy($route->class, $Dmanager);
                     $method = $route->methodClass;
 
                     try {
+                        $methodArgs = $this->getMainMethodExecuteArgs($method, $req);
                         foreach(self::$middlewares as $md){
                             $instanceMiddleware = $this->getInstanceBy($md, $Dmanager);
                             $this->ExecuteMiddleware($instanceMiddleware, $req);
                         }
-                        $this->ExecuteMethod($method, $instance, $req);
+                        foreach(self::$aspects as $aspect){
+                            $instanceAspect = $this->getInstanceBy($aspect, $Dmanager);
+                            $this->executeAspect($instanceAspect, $method, $methodArgs, $instance);
+                        }
+                        $this->ExecuteMethod($method, $instance, $methodArgs);
                     } catch (\Throwable $th) {
-                        $this->executeControllerAdviceException($th, $Dmanager);
+                        $this->executeControllerAdviceException($route->class, $th, $Dmanager);
                     }
                     return;
                 }
@@ -99,9 +149,28 @@
         }
 
         #[Override]
-        public function ShowEndPoints(): void
+        public function ShowEndPoints($writeAsJson = false): void
         {
             $cont = count(self::$routes);
+            if($writeAsJson){
+               
+                $endpoints = [];
+                foreach (self::$routes as $key => $value) {
+                    $endpoints[] = [
+                        'rota' => $value->path,
+                        'metodo' => $value->method,
+                        'classe' => $value->class->getName(),
+                        'action' => $value->methodClass,
+                    ];
+                }
+
+                $localPath = $_ENV["base.dir"] . "/endpoitsDoc.json";
+
+                file_put_contents($localPath, json_encode($endpoints, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                
+                return;
+            }
+           
             echo "Endpoints encontrados: $cont <br>";
             foreach (self::$routes as $key => $value) {
                 $rota = $value->path;
@@ -201,7 +270,29 @@
         }
 
         private function renderError404Page()
-        {
+        {   
+            try {
+                if(isset($_ENV["notfoundPage"])){
+                    $htmlFilePath = $_ENV["notfoundPage"];
+                    if (strpos($htmlFilePath, '{base.dir}') !== false) {
+                        $baseDir = $_ENV["base.dir"];
+                        $htmlFilePath = str_replace('{base.dir}', $baseDir, $htmlFilePath);
+                    }
+                    
+                    if (file_exists($htmlFilePath)){
+                        return file_get_contents($htmlFilePath);
+                    }
+                    return $this->getDefaltError404Page();
+                }else{
+                    return $this->getDefaltError404Page();
+                }
+            } catch (\Throwable $th) {
+                return $this->getDefaltError404Page();
+            }
+
+        }
+
+        private function getDefaltError404Page(){
             $html = '
                     <!DOCTYPE html>
                     <html lang="pt-br">
@@ -252,7 +343,6 @@
                     </head>
                     <body>
                         <div class="error-container">
-                            <img class="error-image" src="/src/4835105_404_icon.png" alt="Erro 404 - Página não encontrada">
                             <h1>Oops! Página não encontrada</h1>
                             <p>A página que você está procurando não foi encontrada. <br>Verifique o URL ou <a href="/">volte para a página inicial</a>.</p>
                         </div>
@@ -324,42 +414,61 @@
             return null;
         }
 
-        private function ExecuteMethod(ReflectionMethod $method, $entity, Request $req)
-        {
-            
+        private function ExecuteMethod(ReflectionMethod $method, $entity, array &$args)
+        {   
             try {
                 $parameters = $method->getParameters();
                 if ($parameters !== null) {
-                    $args = [];
-                    foreach ($parameters as $param) {
-                        $paramType = $param->getType()->getName();
-                        
-                        switch ($paramType) {
-                            case Request::class:
-                                $args[] = $req;
-                                break;
-                            case Response::class:
-                                $args[] = new Response();
-                                break;
-                            default:
-                                $args[] = null;
-                                break;
-                        }
-                    }
-                    try {
-                        $method->invokeArgs($entity, $args);
-                    } catch (\Throwable $th) {
-                        $reflect = new ReflectionClass($entity);
-                        $name = $reflect->getName();
-                        $error = $th->getMessage();
-                        echo "<b>Error:</b> [$name] --> $error";
-                    }
+                    $result = $method->invokeArgs($entity, $args);
+                    $this->echoResult($result);
                 } else {
-                    $method->invoke($entity);
+                    $result = $method->invoke($entity);
+                    $this->echoResult($result);
                 }
             } catch (Exception $e) {
-                var_dump($e->getMessage());
+                throw $e;
             }
+        }
+
+        private function executeAspect(Aspect $aspect, ReflectionMethod &$method, array &$args, object &$controllerEntity){
+            try {
+                $aspect->aspectBefore($controllerEntity, $method, $args);
+            } catch (Throwable $th) {
+                throw $th;
+            }
+        }
+
+        private function getMainMethodExecuteArgs(ReflectionMethod $method, Request $req): array{
+            $args = [];
+
+            try{
+                $parameters = $method->getParameters();
+                if ($parameters !== null){
+                    foreach ($parameters as $param){
+                        $paramType = $param->getType();
+                        if(isset($paramType)){
+                            $paramNameTypeName = $paramType->getName();
+                            switch ($paramNameTypeName) {
+                                case Request::class:
+                                    $args[] = $req;
+                                    break;
+                                case Response::class:
+                                    $args[] = new Response();
+                                    break;
+                                default:
+                                    $args[] = null;
+                                    break;
+                            }
+                        }else{
+                            $args[] = null; 
+                        }
+                    }
+                }
+            }catch(Throwable $e){
+                throw $e;
+            }
+
+            return $args;
         }
 
         private function ExecuteMiddleware(Middleware $entity, Request $req){
@@ -370,19 +479,125 @@
             $atribute = $reflection->getAttributes(ControllerAdvice::class);
             if(isset($atribute) && !empty($atribute)){
                 $_SESSION["controllerAdvice"][] = $reflection;
+                $_SESSION["selectedClass"][] =  $reflection->getName();
             }
         }
 
-        private function executeControllerAdviceException(Throwable $throwable, DependencyManager $Dmanager){
+        private function executeControllerAdviceException($entityName, Throwable $throwable, DependencyManager $Dmanager){
             if(isset(self::$controllerErrorReflect)){
                 self::$controllerError = $this->getInstanceBy(self::$controllerErrorReflect, $Dmanager);
                 self::$controllerError->onError($throwable);
             }else{
-                throw $throwable;  
+                $error = $throwable->getMessage();
+                echo "<b>Error:</b> [$entityName] --> $error";
             }
         }
+
+        private function echoResult($result){
+            if($result !== null){
+                if (is_scalar($result)){
+                    echo $result;
+                }else if(is_array($result)) {
+                    echo json_encode($result);
+                }else if (is_object($result)) {
+                    if (method_exists($result, '__toString')){
+                        echo $result->__toString();
+                    }else{
+                        echo serialize($result);
+                    }
+                }
+            }
+        }
+
+        private function mapIfNotloaded(){
+            $exec = (empty($_ENV["enviroment"]) || $_ENV["enviroment"] == 'dev') ? false : true;
+            if(isset($_SESSION["selectedClass"]) && $exec){
+                foreach ($_SESSION["selectedClass"] as $class){
+                    $reflect = new ReflectionClass($class);
+                    $atribute = $reflect->getAttributes(Controller::class);
+    
+                    if (isset($atribute) && !empty($atribute)){
+                        $this->mappingControllerClass(new ReflectionClass($class));
+                    }
+    
+                    $parentClass = $reflect->getParentClass();
+                    if ($parentClass !== false) {
+                        $parentClassName = $parentClass->getName();
+                        if($parentClassName === Middleware::class){
+                            self::$middlewares[] = $reflect;
+                        }else if($parentClassName === ControllerAdvice::class){
+                            self::$controllerErrorReflect = $reflect;
+                        }
+                    }
+    
+                    if(!isset($_SESSION["controllerAdvice"]) || empty($_SESSION["controllerAdvice"])){
+                        $this->addToControllerAdvice($reflect);
+                    }
+                }
+            }else{
+                unset($_SESSION["selectedClass"]);
+                $classes = get_declared_classes();
+                foreach ($classes as $class){
+                    $reflect = new ReflectionClass($class);
+                    $atribute = $reflect->getAttributes(Controller::class);
+    
+                    if (isset($atribute) && !empty($atribute)){
+                        $this->mappingControllerClass(new ReflectionClass($class));
+                        $_SESSION["selectedClass"][] =  $class;
+                    }
+    
+                    $parentClass = $reflect->getParentClass();
+                    if ($parentClass !== false) {
+                        $parentClassName = $parentClass->getName();
+                        if($parentClassName === Middleware::class){
+                            $_SESSION["selectedClass"][] =  $class;
+                            self::$middlewares[] = $reflect;
+                        }else if($parentClassName === ControllerAdvice::class){
+                            $_SESSION["selectedClass"][] =  $class;
+                            self::$controllerErrorReflect = $reflect;
+                        }
+                    }
+    
+                    if(!isset($_SESSION["controllerAdvice"]) || empty($_SESSION["controllerAdvice"])){
+                        $this->addToControllerAdvice($reflect);
+                    }
+                }   
+            }
+        }
+
+        private function addRoutesToCash(){
+            $settings = $this->getCache();
+            $endpoints = [];
+            foreach (self::$routes as $key => $value) {
+                $endpoints[] = [
+                    'path' => $value->path,
+                    'httpMethod' => $value->method,
+                    'class' => $value->class->getName(),
+                    'action' => $value->methodClass,
+                ];
+            }
+            $settings["configurations"]["routes"] = $endpoints;
+            $jsonData = json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            file_put_contents(ServerAutoload::$metaDadosPath, $jsonData);
+        }
+
+        private function getCache(){
+            $filePath = ServerAutoload::$metaDadosPath;
+            if (!file_exists($filePath)) {
+                return null;
+            }
+            $jsonData = file_get_contents($filePath);
+            if ($jsonData === false) {
+                return null;
+            }
+            $data = json_decode($jsonData, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return null;
+            }
+            return $data;
+        }
+
     }
 
-
-    
+ 
 ?>

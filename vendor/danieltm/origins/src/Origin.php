@@ -6,6 +6,7 @@
     }
 
     class Origin{
+        public static bool $runBytask = false;
         private static Origin $instance;
         private Dispacher $dispacher;
         private Autoloader $autoload;
@@ -29,8 +30,8 @@
 
         }
 
-        public function showMappedendPoints(){
-            $this->dispacher->ShowEndPoints();
+        public function showMappedendPoints($writeAsJson = false){
+            $this->dispacher->ShowEndPoints($writeAsJson);
         }
 
         public function run(){
@@ -57,8 +58,9 @@
             return new DependencyManager();
         }
 
-        public static function initialize(): Origin
+        public static function initialize(bool $byTask = false): Origin
         {
+            self::$runBytask = $byTask;
             if (!isset(self::$instance)) {
                 self::$instance = new Origin();
             }

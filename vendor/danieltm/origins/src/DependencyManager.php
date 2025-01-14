@@ -3,7 +3,7 @@
     use ReflectionClass;
     use ReflectionProperty;
 
-    class DependencyManager{
+    class DependencyManager{ 
         private static $dependency_creator = [];
         private static $dependencys = [];
 
@@ -13,53 +13,56 @@
         } 
 
         public function start() : void{
-            $classes = get_declared_classes();
-            foreach($classes as $c){
-                $reflect = new ReflectionClass($c);
-                $atrbute = $reflect->getAttributes(Dependency::class);
-                if(!empty($atrbute)){
-                    if(!$reflect->isInterface()){
-                        self::$dependency_creator[] = $reflect;
-                    }
-                }
 
-                $parentClass = $reflect->getParentClass();
-                if ($parentClass !== false) {
-                    $parentClassName = $parentClass->getName();
-                    if($parentClassName === OnInit::class){
-                        self::$dependency_creator[] = $reflect;
+            if(isset($_SESSION["origins.dependencys"])){
+                $classes = $_SESSION["origins.dependencys"];
+                foreach($classes as $c){
+                    self::$dependency_creator[] = new ReflectionClass($c);
+                }
+            }else{
+                $classes = get_declared_classes();
+                foreach($classes as $c){
+                    $reflect = new ReflectionClass($c);
+                    $atrbute = $reflect->getAttributes(Dependency::class);
+                    if(!empty($atrbute)){
+                        if(!$reflect->isInterface()){
+                            self::$dependency_creator[] = $reflect;
+                        }
+                    }
+    
+                    $parentClass = $reflect->getParentClass();
+                    if ($parentClass !== false) {
+                        $parentClassName = $parentClass->getName();
+                        if($parentClassName === OnInit::class){
+                            self::$dependency_creator[] = $reflect;
+                        }
                     }
                 }
             }
             $this->create();
+
         }
 
         public function addDependency(string $dependency, object $object){
             $notDepend = true;
-            foreach(self::$dependencys as $d){
-                if(isset($d[$dependency])){
-                   $d[$dependency] = $object;
-                   $notDepend = false;
-                }
+            if(isset(self::$dependencys[$dependency])){
+                self::$dependencys[$dependency] = $object;
+               $notDepend = false;
             }
 
             if($notDepend){
-                self::$dependencys[] = [
-                    $dependency => $object
-                ];
+                self::$dependencys[$dependency] = $object;
             }
             
         }
 
         public function get(string $dependency){
             $object = null;
-            foreach(self::$dependencys as $d){
-                if(isset($d[$dependency])){
-                    if(is_callable($d[$dependency])){
-                        $object = $d[$dependency]();
-                    }else if(is_object($d[$dependency])){
-                        $object = $d[$dependency];
-                    }
+            if(isset(self::$dependencys[$dependency])){
+                if(is_callable(self::$dependencys[$dependency])){
+                    $object = self::$dependencys[$dependency]();
+                }else if(is_object(self::$dependencys[$dependency])){
+                    $object = self::$dependencys[$dependency];
                 }
             }
             return $object;
@@ -80,22 +83,16 @@
                 $interfaces = $d->getInterfaces();
                 foreach ($interfaces as $interface) {
                     $interfaceName = $interface->getName();
-                    self::$dependencys[] = [
-                        $interfaceName => $instance
-                    ];
+                    self::$dependencys[$interfaceName] = $instance;
                 }
 
                 $parentClass = $d->getParentClass();
                 if ($parentClass !== false) {
                     $parentClassName = $parentClass->getName();
-                    self::$dependencys[] = [
-                        $parentClassName => $instance
-                    ];
+                    self::$dependencys[$parentClassName] = $instance;
                 }
 
-                self::$dependencys[] = [
-                    $name => $instance
-                ];   
+                self::$dependencys[$name] = $instance;   
             }
         } 
 
@@ -183,7 +180,6 @@
                     }
 
                     $object = $this->getInstanceOrActivator($reflect);
-                    
                     if($dependencyname === DependencyManager::class){
                         return $this;
                     }else if(is_callable($object)){
@@ -200,9 +196,7 @@
 
         private function autoInject(): void{
             if(!isset(self::$dependencys[DependencyManager::class])){
-                self::$dependencys[] = [
-                    DependencyManager::class => $this
-                ];
+                self::$dependencys[DependencyManager::class] = $this;
             }
         }
 
