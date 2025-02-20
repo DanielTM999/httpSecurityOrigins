@@ -13,8 +13,5 @@
     "require": {
         "php": "^8.0"
     },
-    "license": "MIT",
-    "scripts": {
-        "create-template": "php src/.origin_scripts/template.php"
-    }
+    "license": "MIT"
 }

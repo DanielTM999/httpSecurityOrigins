@@ -1,5 +1,6 @@
 <?php
     namespace Daniel\Origins;
+
     use ReflectionClass;
     use ReflectionProperty;
 
@@ -43,11 +44,11 @@
 
         }
 
-        public function addDependency(string $dependency, object $object){
+        public function addDependency(string $dependency, object &$object){
             $notDepend = true;
             if(isset(self::$dependencys[$dependency])){
                 self::$dependencys[$dependency] = $object;
-               $notDepend = false;
+                $notDepend = false;
             }
 
             if($notDepend){
@@ -96,33 +97,21 @@
             }
         } 
 
-        private function getInstanceOrActivator(ReflectionClass $reflect){
+        private function getInstanceOrActivator(ReflectionClass $reflect) : object{
             $vars = $reflect->getProperties();
             $constructor = $reflect->getConstructor();
 
             
             if ($constructor !== null){
-
+                return null;
             }else{
                 $atrbuteData = $reflect->getAttributes(Dependency::class);
                 $singleton = $this->isSingleton($atrbuteData);
                 if($singleton){
-                    $instance = $reflect->newInstanceWithoutConstructor();
-                    foreach($vars as $var){
-                        $object = $this->getDependency($var);      
-                        $var->setAccessible(true);
-                        $var->setValue($instance, $object);
-                    }
-                    return $instance;
+                    return $this->getIntanceInternal($reflect, $vars);
                 }else{
                     $activator = function() use ($reflect, $vars){
-                        $instance = $reflect->newInstanceWithoutConstructor();
-                        foreach($vars as $var){
-                            $object = $this->getDependency($var);      
-                            $var->setAccessible(true);
-                            $var->setValue($instance, $object);
-                        }
-                        return $instance;
+                        return $this->getIntanceInternal($reflect, $vars);
                     };
                     return $activator;
                 }
@@ -223,5 +212,32 @@
         }
 
 
+        private function getIntanceInternal(ReflectionClass $reflect, $vars){
+            $instance = $reflect->newInstanceWithoutConstructor();
+            foreach($vars as $var){
+                $type = $var->getType() ?? "";
+                if(isset($type)){
+                    $name = $type->getName() ?? "";
+    
+                    if($name === "PDO"){
+                        $var->setAccessible(false);
+                    }else{
+                        if ($this->isAnnotetionPresent($var, Inject::class)){
+                            $object = $this->getDependency($var);
+                            $var->setAccessible(true);
+                            $var->setValue($instance, $object);
+                        }
+                    }
+                
+                }else{
+                    if ($this->isAnnotetionPresent($var, Inject::class)){
+                        $object = $this->getDependency($var);
+                        $var->setAccessible(true);
+                        $var->setValue($instance, $object);
+                    }
+                }
+            }
+            return $instance;
+        }
     }
 ?>

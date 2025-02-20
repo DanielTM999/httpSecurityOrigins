@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "danieltm/origins",
-            "version": "V1.6.0",
+            "version": "V1.6.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DanielTM999/origins.git",
-                "reference": "3e5c5f2b915a57fd0062557e63ff3bad31d8ac70"
+                "reference": "cecc597d4cda1209fd31b4e19566ac058d3e92b4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/3e5c5f2b915a57fd0062557e63ff3bad31d8ac70",
-                "reference": "3e5c5f2b915a57fd0062557e63ff3bad31d8ac70",
+                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/cecc597d4cda1209fd31b4e19566ac058d3e92b4",
+                "reference": "cecc597d4cda1209fd31b4e19566ac058d3e92b4",
                 "shasum": ""
             },
             "require": {
@@ -40,9 +40,9 @@
             ],
             "support": {
                 "issues": "https://github.com/DanielTM999/origins/issues",
-                "source": "https://github.com/DanielTM999/origins/tree/V1.6.0"
+                "source": "https://github.com/DanielTM999/origins/tree/V1.6.1"
             },
-            "time": "2025-01-14T01:58:16+00:00"
+            "time": "2025-02-20T18:48:45+00:00"
         }
     ],
     "packages-dev": [],

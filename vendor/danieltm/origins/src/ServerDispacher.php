@@ -15,6 +15,7 @@
         private static ReflectionClass $controllerErrorReflect;
         private static ControllerAdvice $controllerError;
 
+        
         #[Override]
         public function map(): void{
             if(isset($_SESSION["origins.loaders"])){
@@ -93,8 +94,25 @@
         }
 
         #[Override]
+        public function addExternalRoute(Router $route): void{
+            if(isset($route)){
+                self::$routes[] = $route;
+            }
+        }
+
+        #[Override]
+        public function addExternalRouteAtrubutes(string $path, string $httpMethod, ReflectionClass $class, ReflectionMethod $method): void{
+            if(isset($path) && isset($httpMethod) && isset($class) && isset($method)){
+                if($httpMethod === HttpMethod::GET || $httpMethod === HttpMethod::POST || $httpMethod === HttpMethod::DELETE || $httpMethod === HttpMethod::PUT){
+                    $route = new Router($path, $httpMethod, $class, $method);
+                    self::$routes[] = $route;
+                }
+            }
+        }
+
+        #[Override]
         public function dispach(DependencyManager $Dmanager): void{
-            $hostClient = $_SERVER['HTTP_HOST'];
+            $hostClient = $_SERVER['REMOTE_ADDR'];
             $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $requestMethod = $_SERVER['REQUEST_METHOD'];
             $headers = getallheaders();
@@ -119,8 +137,8 @@
                     }
 
                     $req = ($jsonData !== null)
-                        ? new Request($headers, $jsonData, $pathVariables, $requestPath, $hostClient)
-                        : new Request($headers, ($requestMethod === "GET" ? $_GET : $_POST), $pathVariables, $requestPath, $hostClient);
+                        ? new Request($headers, $jsonData, $pathVariables, $requestPath, $hostClient, $route)
+                        : new Request($headers, ($requestMethod === "GET" ? $_GET : $_POST), $pathVariables, $requestPath, $hostClient, $route);
 
 
                     $instance = $this->getInstanceBy($route->class, $Dmanager);
@@ -132,11 +150,19 @@
                             $instanceMiddleware = $this->getInstanceBy($md, $Dmanager);
                             $this->ExecuteMiddleware($instanceMiddleware, $req);
                         }
+                        $instanceAspectList = [];
+
                         foreach(self::$aspects as $aspect){
                             $instanceAspect = $this->getInstanceBy($aspect, $Dmanager);
-                            $this->executeAspect($instanceAspect, $method, $methodArgs, $instance);
+                            $instanceAspectList[] = &$instanceAspect;
+                            $this->executeAspect($instanceAspect, $method, $methodArgs, $instance, "before");
                         }
+
                         $this->ExecuteMethod($method, $instance, $methodArgs);
+
+                        foreach($instanceAspectList as $instanceAspect){
+                            $this->executeAspect($instanceAspect, $method, $methodArgs, $instance, "after");
+                        }
                     } catch (\Throwable $th) {
                         $this->executeControllerAdviceException($route->class, $th, $Dmanager);
                     }
@@ -430,9 +456,13 @@
             }
         }
 
-        private function executeAspect(Aspect $aspect, ReflectionMethod &$method, array &$args, object &$controllerEntity){
+        private function executeAspect(Aspect $aspect, ReflectionMethod &$method, array &$args, object &$controllerEntity, string $methodType){
             try {
-                $aspect->aspectBefore($controllerEntity, $method, $args);
+                if($methodType === "before"){
+                    $aspect->aspectBefore($controllerEntity, $method, $args);
+                }else if($methodType === "after"){
+                    $aspect->aspectAfter($controllerEntity, $method, $args);
+                }
             } catch (Throwable $th) {
                 throw $th;
             }
