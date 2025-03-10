@@ -1,5 +1,6 @@
 <?php
     namespace Daniel\HttpSecurity;
+
     use Daniel\Origins\DependencyManager;
     use Daniel\Origins\FilterPriority;
     use Daniel\Origins\Inject;
@@ -20,19 +21,46 @@
             $this->manager->addDependency(HttpSecurityConfigurar::class, $obj);
         }
     }
-    
+
     class HttpSecurityConfigurar{
+        private array $enviroments;
+        private string $defaultEnvName = ""; 
+        
+        public function addEnvaroment(bool $default = true, string|null $envName = "default", callable $function){
+            $env = new HttpSecurityConfigurarEnv();
+            $function($env);
+            $this->enviroments[$envName] = $env;
+            if($default){
+                $this->defaultEnvName = $envName;
+            }
+        }
+
+        public function getDefaultEnv(){
+            return  $this->enviroments[$this->defaultEnvName] ?? null;
+        }
+
+        public function getEnviroments(): array{
+            return $this->enviroments;
+        }
+
+        public function getEnviroment(string $envName){
+            return $this->enviroments[$envName] ?? null;
+        }
+
+    }
+    
+    class HttpSecurityConfigurarEnv{
         private static int $sessionPolice = SessionPolice::STATELESS;
         private static $requests = [];
         private static $filters = [];
         private bool $anyPublic = true;
         
-        public function sessionPolice(int $police): HttpSecurityConfigurar{
+        public function sessionPolice(int $police): HttpSecurityConfigurarEnv{
             self::$sessionPolice = $police;
             return $this;
         }
 
-        public function RequestPatterns(callable $f): HttpSecurityConfigurar{
+        public function RequestPatterns(callable $f): HttpSecurityConfigurarEnv{
             $f(new RequestMatcherAction($this));
             return $this;
         }
@@ -41,7 +69,7 @@
             self::$requests[] = $requestMatcher;
         }
 
-        public function AddFilterBefore(object &$filter): HttpSecurityConfigurar{
+        public function AddFilterBefore(object &$filter): HttpSecurityConfigurarEnv{
             if ($filter instanceof SecurityFilterChain) {
                 self::$filters[] = $filter;
             } else {
@@ -107,9 +135,9 @@
     }
 
     class RequestMatcherAction{
-        private HttpSecurityConfigurar $config;
+        private HttpSecurityConfigurarEnv $config;
 
-        public function __construct(HttpSecurityConfigurar $config)
+        public function __construct(HttpSecurityConfigurarEnv $config)
         {
             $this->config = $config;
         }
@@ -120,12 +148,12 @@
     }
 
     class RequestMatcherActionAuthorize{
-        private HttpSecurityConfigurar $config;
+        private HttpSecurityConfigurarEnv $config;
         private string $route;
         private $method;
         private string $environment;
 
-        public function __construct(string $route, HttpSecurityConfigurar $config, $method = null, $environment = null)
+        public function __construct(string $route, HttpSecurityConfigurarEnv $config, $method = null, $environment = null)
         {
             $this->route = $route;
             $this->method = $method;
@@ -143,9 +171,9 @@
     }
 
     class RequestMatcherActionAuthorizeAny{
-        private HttpSecurityConfigurar $config;
+        private HttpSecurityConfigurarEnv $config;
 
-        public function __construct(HttpSecurityConfigurar $config)
+        public function __construct(HttpSecurityConfigurarEnv $config)
         {
             $this->config = $config;
         }

@@ -14,11 +14,32 @@
         #[Inject]
         private HttpSecurityConfigurar $httpManager;
 
+        private HttpSecurityConfigurarEnv $environment;
+
         #[Override]
         public function onPerrequest(Request $req) : void{
             $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $requestMethod = $_SERVER['REQUEST_METHOD'];
-            foreach($this->httpManager->getREQUESTS() as $r) { 
+            $userDatails = SecurityContext::getContext();
+
+            if(!isset($userDatails)){
+                $this->environment = $this->httpManager->getDefaultEnv();
+                if(!isset($this->environment)){
+                    return;
+                }
+            }else{
+                $environmentName = $userDatails->getEnvironment();
+                if(!isset($environmentName)){
+                    return;
+                }else{
+                    $this->environment = $this->httpManager->getEnviroment($environmentName);
+                    if(!isset($this->environment)){
+                        return;
+                    }
+                }
+            }
+
+            foreach($this->environment->getREQUESTS() as $r) { 
                 $routeSecurity = $r->getRoute();
                 if(strpos($routeSecurity, "/**") !== false){
                     $routePrefix = rtrim($routeSecurity, '/**');
@@ -57,8 +78,8 @@
                 }
             }
 
-            if(!$this->httpManager->ispublic()){
-                if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
+            if(!$this->environment->ispublic()){
+                if($this->environment->getSessionPolice() === SessionPolice::STATELESS){
                     $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
                 }else{
                     $_SESSION["SessionPolice"] = SessionPolice::STATEFULL;
@@ -94,7 +115,7 @@
 
         public function isAuth($roles, $environment): bool{
             $environment = $environment ?? "";
-            if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
+            if($this->environment->getSessionPolice() === SessionPolice::STATELESS){
                 $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
             }else{
                 $_SESSION["SessionPolice"] = SessionPolice::STATEFULL;
@@ -125,7 +146,7 @@
         }
 
         private function applyFilters(Request $req){
-            foreach($this->httpManager->getFilters() as $r){
+            foreach($this->environment->getFilters() as $r){
                 try {
                     $r->filterPerRequest($req);
                 } catch (\Throwable $th) {
@@ -138,7 +159,7 @@
 
     class AuthorizationException extends Exception{
 
-        public function __construct($message = "Authorization error", $code = 0, Exception $previous = null)
+        public function __construct($message = "Authorization error", $code = 0, Exception|null $previous = null)
         {
             parent::__construct($message, $code, $previous);
         }
@@ -146,7 +167,7 @@
 
     class AuthorityAuthorizationException extends Exception{
 
-        public function __construct($message = "Authorization Roles error", $code = 0, Exception $previous = null)
+        public function __construct($message = "Authorization Roles error", $code = 0, Exception|null $previous = null)
         {
             parent::__construct($message, $code, $previous);
         }
@@ -154,7 +175,7 @@
 
     class EnvironmentAuthorizationException extends Exception{
 
-        public function __construct($message = "Authorization Environment error", $code = 0, Exception $previous = null)
+        public function __construct($message = "Authorization Environment error", $code = 0, Exception|null $previous = null)
         {
             parent::__construct($message, $code, $previous);
         }

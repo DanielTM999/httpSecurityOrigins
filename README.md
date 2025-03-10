@@ -32,15 +32,30 @@ Crie uma classe que estenda `OnInit` para configurar as dependências iniciais:
 
         #[Override]
         public function ConfigOnInit() : void {
-            $this->httpManager->sessionPolice(SessionPolice::STATELESS)
-                ->RequestPatterns(function(RequestMatcherAction $e) {
-                    $e->Request("/")->authenticate(["adm"]);
-                    $e->Request("/teste")->authenticate();
-                    $e->Request("/teste2", HttpMethod::DELETE, "env_teste")->authenticate(["adm"]);
-                })
-                ->AddFilterBefore($this->httpfilter)
-                //->AddFilterBefore(new FilterChain()) --> não irá ter ajuda do injetor de dependecias do Origin(injeção manul nesse caso);
-                ->any()->permitAll();
+            $this->httpManager->addEnvaroment(true, "seuAmbiente", function($httpManager){
+                $httpManager->sessionPolice(SessionPolice::STATELESS)
+                    ->RequestPatterns(function(RequestMatcherAction $e) {
+                        $e->Request("/")->authenticate(["adm"]);
+                        $e->Request("/teste")->authenticate();
+                        $e->Request("/teste2", HttpMethod::DELETE)->authenticate(["adm"]);
+                    })
+                    ->AddFilterBefore($this->httpfilter)
+                    //->AddFilterBefore(new FilterChain()) --> não irá ter ajuda do injetor de dependecias do Origin(injeção manul nesse caso);
+                    ->any()->permitAll();
+            });
+
+            $this->httpManager->addEnvaroment(true, "seuOutroSeNescessarioAmbiente", function($httpManager){
+                $httpManager->sessionPolice(SessionPolice::STATELESS)
+                    ->RequestPatterns(function(RequestMatcherAction $e) {
+                        $e->Request("/")->authenticate(["adm"]);
+                        $e->Request("/teste")->authenticate();
+                        $e->Request("/teste2", HttpMethod::DELETE)->authenticate(["adm"]);
+                    })
+                    ->AddFilterBefore($this->httpfilter)
+                    //->AddFilterBefore(new FilterChain()) --> não irá ter ajuda do injetor de dependecias do Origin(injeção manul nesse caso);
+                    ->any()->permitAll();
+            });
+
         }
     }
 
