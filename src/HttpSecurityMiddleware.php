@@ -61,7 +61,11 @@
             }
 
             if(!$this->httpManager->ispublic()){
-                $environment = $this->httpManager->getDefaultEnvaroment() ?? "";
+                try{
+                    $environment = $this->httpManager->getDefaultEnvaroment() ?? "";
+                }catch(\Throwable $th){
+                    $environment = $this->httpManager->getDefaultEnvaroment() ?? "";
+                }
                 $userDatails = SecurityContext::getContext();
 
                 if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
@@ -70,10 +74,17 @@
                     $_SESSION["SessionPolice"] = SessionPolice::STATEFULL;
                 }
 
+                try {
+                    $userEnv = $userDatails->getEnvironment();
+                } catch (\Throwable $th) {
+                    $userEnv = null;
+                }
 
-                if($userDatails->getEnvironment() === null){
+                if($environment === ""){
+                    
+                }else if(!isset($userEnv)){
                     throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]", 0, "", $environment);
-                }else if($userDatails->getEnvironment() !== $environment){
+                }else if($userEnv !== $environment){
                     throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]", 0, $userDatails->getEnvironment(), $environment);
                 }
 
@@ -105,7 +116,11 @@
         }
 
         public function isAuth($roles, $environment): bool{
-            $environment = $environment ?? $this->httpManager->getDefaultEnvaroment() ?? "";
+            try{
+                $environment = $environment ?? $this->httpManager->getDefaultEnvaroment() ?? "";
+            }catch(\Throwable $th){
+                $environment = $this->httpManager->getDefaultEnvaroment() ?? "";
+            }
             
             if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
                 $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
