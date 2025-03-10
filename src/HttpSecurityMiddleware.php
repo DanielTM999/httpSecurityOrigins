@@ -22,6 +22,10 @@
             $requestMethod = $_SERVER['REQUEST_METHOD'];
             $userDatails = SecurityContext::getContext();
 
+            if(!isset($this->httpManager)){
+                return;
+            }
+
             if(!isset($userDatails)){
                 $this->environment = $this->httpManager->getDefaultEnv();
                 if(!isset($this->environment)){
