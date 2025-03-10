@@ -26,6 +26,7 @@
         private static $requests = [];
         private static $filters = [];
         private bool $anyPublic = true;
+        private string $defaultEnv = "";
         
         public function sessionPolice(int $police): HttpSecurityConfigurar{
             self::$sessionPolice = $police;
@@ -54,6 +55,11 @@
             return new RequestMatcherActionAuthorizeAny($this);
         }
 
+        public function defaultEnvaroment(string $defaultEnv): HttpSecurityConfigurar{
+           $this->defaultEnv = $defaultEnv; 
+           return $this;
+        }
+
         public function getREQUESTS(){
             return self::$requests;
         }
@@ -68,6 +74,10 @@
 
         public function ispublic(){
             return $this->anyPublic;
+        }
+
+        public function getDefaultEnvaroment(){
+            return $this->defaultEnv;
         }
 
     }
@@ -114,7 +124,11 @@
             $this->config = $config;
         }
 
-        public function Request(string $route, $method = null, $environment = null): RequestMatcherActionAuthorize{
+        public function Request(string $route, $environment = null): RequestMatcherActionAuthorize{
+            return new RequestMatcherActionAuthorize($route, $this->config, null, $environment);
+        }
+
+        public function RequestMethod(string $route, $method = null, $environment = null): RequestMatcherActionAuthorize{
             return new RequestMatcherActionAuthorize($route, $this->config, $method, $environment);
         }
     }

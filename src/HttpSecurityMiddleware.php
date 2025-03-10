@@ -22,6 +22,9 @@
                 $routeSecurity = $r->getRoute();
                 if(strpos($routeSecurity, "/**") !== false){
                     $routePrefix = rtrim($routeSecurity, '/**');
+                    if($routePrefix === ""){
+                        $routePrefix = "/";
+                    }
                     if (strpos($requestPath, $routePrefix) === 0) {
                         $method = $r->getHttpMethod();
                         if(!isset($method)){
@@ -58,13 +61,22 @@
             }
 
             if(!$this->httpManager->ispublic()){
+                $environment = $this->httpManager->getDefaultEnvaroment() ?? "";
+                $userDatails = SecurityContext::getContext();
+
                 if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
                     $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
                 }else{
                     $_SESSION["SessionPolice"] = SessionPolice::STATEFULL;
                 }
 
-                $userDatails = SecurityContext::getContext();
+
+                if($userDatails->getEnvironment() === null){
+                    throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]", 0, "", $environment);
+                }else if($userDatails->getEnvironment() !== $environment){
+                    throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]", 0, $userDatails->getEnvironment(), $environment);
+                }
+
                 if(!isset($userDatails)){
                     throw new AuthorizationException("not authorized ");
                 }else{
@@ -93,7 +105,8 @@
         }
 
         public function isAuth($roles, $environment): bool{
-            $environment = $environment ?? "";
+            $environment = $environment ?? $this->httpManager->getDefaultEnvaroment() ?? "";
+            
             if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
                 $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
             }else{
@@ -108,12 +121,11 @@
 
             if($environment !== ""){
                 if($userDatails->getEnvironment() === null){
-                    throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]");
+                    throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]", 0, "", $environment);
                 }else if($userDatails->getEnvironment() !== $environment){
-                    throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]");
+                    throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]", 0, $userDatails->getEnvironment(), $environment);
                 }
             }
-
             if(!empty($roles)){
                 if (!empty(array_intersect($roles, $userDatails->getRoles()))) {
                     return true;
@@ -138,7 +150,7 @@
 
     class AuthorizationException extends Exception{
 
-        public function __construct($message = "Authorization error", $code = 0, Exception $previous = null)
+        public function __construct($message = "Authorization error", $code = 0, Exception|null $previous = null)
         {
             parent::__construct($message, $code, $previous);
         }
@@ -146,17 +158,29 @@
 
     class AuthorityAuthorizationException extends Exception{
 
-        public function __construct($message = "Authorization Roles error", $code = 0, Exception $previous = null)
+        public function __construct($message = "Authorization Roles error", $code = 0, Exception|null $previous = null)
         {
             parent::__construct($message, $code, $previous);
         }
     }
 
     class EnvironmentAuthorizationException extends Exception{
+        private string $getUserEnv;
+        private string $getTargetEnv;
 
-        public function __construct($message = "Authorization Environment error", $code = 0, Exception $previous = null)
+        public function __construct($message = "Authorization Environment error", $code = 0, string $getUserEnv, string $gettargetEnv, Exception|null $previous = null)
         {
             parent::__construct($message, $code, $previous);
+            $this->getUserEnv = $getUserEnv;
+            $this->getTargetEnv = $gettargetEnv;
+        }
+
+        public function getUserEnvaroment(): string{
+            return $this->getUserEnv;
+        }
+
+        public function getTargetEnvaroment(): string{
+            return $this->getTargetEnv;
         }
     }
 ?>
