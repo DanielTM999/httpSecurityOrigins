@@ -106,7 +106,7 @@
             $this->applyFilters($req);
             if($routeSecurity === $requestPath || $verifiMethod){
                 if($r->getNeedAuth()){
-                    if($this->isAuth($r->getRoles(), $r->getenvironment())){
+                    if($this->isAuth($r->getRoles(), $r->getEnvironment())){
                         return true;
                     }
                     throw new AuthorizationException("not authorized ");

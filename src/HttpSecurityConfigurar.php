@@ -26,8 +26,8 @@
         private array $enviroments;
         private string $defaultEnvName = ""; 
         
-        public function addEnvaroment(bool $default = true, string|null $envName = "default", callable $function){
-            $env = new HttpSecurityConfigurarEnv();
+        public function addEnvaroment(bool $default = true, string $envName = "default", callable $function){
+            $env = new HttpSecurityConfigurarEnv($envName);
             $function($env);
             $this->enviroments[$envName] = $env;
             if($default){
@@ -54,6 +54,11 @@
         private static $requests = [];
         private static $filters = [];
         private bool $anyPublic = true;
+        private string $envName;
+
+        public function __construct(string $envName){
+            $this->envName = $envName;
+        }
         
         public function sessionPolice(int $police): HttpSecurityConfigurarEnv{
             self::$sessionPolice = $police;
@@ -61,7 +66,7 @@
         }
 
         public function RequestPatterns(callable $f): HttpSecurityConfigurarEnv{
-            $f(new RequestMatcherAction($this));
+            $f(new RequestMatcherAction($this, $this->envName));
             return $this;
         }
 
@@ -129,21 +134,23 @@
         public function getRoles(): array{
             return $this->roles;
         }
-        public function getenvironment(): string{
+        public function getEnvironment(): string{
             return $this->environment;
         }
     }
 
     class RequestMatcherAction{
         private HttpSecurityConfigurarEnv $config;
+        private string $envName;
 
-        public function __construct(HttpSecurityConfigurarEnv $config)
+        public function __construct(HttpSecurityConfigurarEnv $config, string $envName)
         {
             $this->config = $config;
+            $this->envName = $envName;
         }
 
-        public function Request(string $route, $method = null, $environment = null): RequestMatcherActionAuthorize{
-            return new RequestMatcherActionAuthorize($route, $this->config, $method, $environment);
+        public function Request(string $route, $method = null): RequestMatcherActionAuthorize{
+            return new RequestMatcherActionAuthorize($route, $this->config, $method, $this->envName);
         }
     }
 
