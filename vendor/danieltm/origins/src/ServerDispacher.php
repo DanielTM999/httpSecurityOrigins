@@ -5,8 +5,8 @@
     use Override;
     use ReflectionClass;
     use ReflectionMethod;
-    use ReflectionProperty;
     use Throwable;
+    use Daniel\Origins\HttpMethod;
 
     class ServerDispacher extends Dispacher{
         public static $routes = [];
@@ -141,19 +141,19 @@
                         : new Request($headers, ($requestMethod === "GET" ? $_GET : $_POST), $pathVariables, $requestPath, $hostClient, $route);
 
 
-                    $instance = $this->getInstanceBy($route->class, $Dmanager);
+                    $instance = $Dmanager->tryCreate($route->class);
                     $method = $route->methodClass;
 
                     try {
                         $methodArgs = $this->getMainMethodExecuteArgs($method, $req);
                         foreach(self::$middlewares as $md){
-                            $instanceMiddleware = $this->getInstanceBy($md, $Dmanager);
+                            $instanceMiddleware = $Dmanager->tryCreate($md);
                             $this->ExecuteMiddleware($instanceMiddleware, $req);
                         }
                         $instanceAspectList = [];
 
                         foreach(self::$aspects as $aspect){
-                            $instanceAspect = $this->getInstanceBy($aspect, $Dmanager);
+                            $instanceAspect = $Dmanager->tryCreate($aspect);
                             $instanceAspectList[] = &$instanceAspect;
                             $this->executeAspect($instanceAspect, $method, $methodArgs, $instance, "before");
                         }
@@ -241,7 +241,7 @@
                             $args[0] = str_replace("[action]", $namemethod, $args[0]);
                         }
                         $path = $pathMapping . $args[0];
-                        $this->addRouteGet($path, $reflect, $method);
+                        $this->addRoute($path, $reflect, $method, HttpMethod::GET);
                         break;
                     case Post::class:
                         $args = $attribute->getArguments();
@@ -249,7 +249,7 @@
                             $args[0] = str_replace("[action]", $namemethod, $args[0]);
                         }
                         $path = $pathMapping . $args[0];
-                        $this->addRoutePost($path, $reflect, $method);
+                        $this->addRoute($path, $reflect, $method, HttpMethod::POST);
                         break;
                     case Delete::class:
                         $args = $attribute->getArguments();
@@ -257,7 +257,7 @@
                             $args[0] = str_replace("[action]", $namemethod, $args[0]);
                         }
                         $path = $pathMapping . $args[0];
-                        $this->addRouteDelete($path, $reflect, $method);
+                        $this->addRoute($path, $reflect, $method, HttpMethod::DELETE);
                         break;
                     case Put::class:
                         $args = $attribute->getArguments();
@@ -265,33 +265,22 @@
                             $args[0] = str_replace("[action]", $namemethod, $args[0]);
                         }
                         $path = $pathMapping . $args[0];
-                        $this->addRoutePut($path, $reflect, $method);
+                        $this->addRoute($path, $reflect, $method, HttpMethod::PUT);
+                        break;
+                    case Patch::class:
+                        $args = $attribute->getArguments();
+                        if(strpos($args[0], "[action]") !== false){
+                            $args[0] = str_replace("[action]", $namemethod, $args[0]);
+                        }
+                        $path = $pathMapping . $args[0];
+                        $this->addRoute($path, $reflect, $method, HttpMethod::PATCH);
                         break;
                 }
             }
         }
 
-        private function addRouteGet(string $Path, ReflectionClass $class, ReflectionMethod $method)
-        {
-            $route = new Router($Path, HttpMethod::GET, $class, $method);
-            self::$routes[] = $route;
-        }
-
-        private function addRoutePost(string $Path, ReflectionClass $class, ReflectionMethod $method)
-        {
-            $route = new Router($Path, HttpMethod::POST, $class, $method);
-            self::$routes[] = $route;
-        }
-    
-        private function addRouteDelete(string $Path, ReflectionClass $class, ReflectionMethod $method)
-        {
-            $route = new Router($Path, HttpMethod::DELETE, $class, $method);
-            self::$routes[] = $route;
-        }
-    
-        private function addRoutePut(string $Path, ReflectionClass $class, ReflectionMethod $method)
-        {
-            $route = new Router($Path, HttpMethod::PUT, $class, $method);
+        private function addRoute(string $Path, ReflectionClass $class, ReflectionMethod $method, string $httpMethod){
+            $route = new Router($Path, $httpMethod, $class, $method);
             self::$routes[] = $route;
         }
 
@@ -299,12 +288,7 @@
         {   
             try {
                 if(isset($_ENV["notfoundPage"])){
-                    $htmlFilePath = $_ENV["notfoundPage"];
-                    if (strpos($htmlFilePath, '{base.dir}') !== false) {
-                        $baseDir = $_ENV["base.dir"];
-                        $htmlFilePath = str_replace('{base.dir}', $baseDir, $htmlFilePath);
-                    }
-                    
+                    $htmlFilePath = $_ENV["notfoundPage"];            
                     if (file_exists($htmlFilePath)){
                         return file_get_contents($htmlFilePath);
                     }
@@ -376,68 +360,6 @@
                     </html>';
 
             return $html;
-        }
-
-        private function getInstanceBy(ReflectionClass $reflect, DependencyManager $Dmanager){
-            $constructor = $reflect->getConstructor();
-            $vars = $reflect->getProperties();
-
-            if ($constructor !== null){
-                $parameters = $constructor->getParameters();
-                if(empty($parameters)){
-                    return $this->injectNoContructors($reflect, $vars, $Dmanager);
-                }
-            }else{
-                return $this->injectNoContructors($reflect, $vars, $Dmanager);
-            }
-        }
-
-        private function injectNoContructors(ReflectionClass $reflect, $vars, DependencyManager $Dmanager)
-        {
-            $instance = $reflect->newInstance();
-            if (count($vars) > 0) {
-                foreach ($vars as $prop) {
-                    if ($this->isAnnotetionPresent($prop, Inject::class)) {
-                        $propClass = $prop->getType();
-                        $args = $this->getAnnotetion($prop, Inject::class);
-                        if (isset($propClass)) {
-                            $object = $Dmanager->get($propClass);
-                            $prop->setAccessible(true);
-                            $prop->setValue($instance, $object);
-                        }else if(!empty($args)){
-                            $object = $Dmanager->get($args[0]);
-                            $prop->setAccessible(true);
-                            $prop->setValue($instance, $object);
-                        }else {
-                            echo "Não posso injetar algo na variavel [ {$prop->getName()} ], essa variavel tem que possuir um tipo";
-                            die();
-                        }
-                    }
-                }
-            }
-            return $instance;
-        }
-
-        private function isAnnotetionPresent(ReflectionProperty $prop, string $atribute): bool
-        {
-            $attributes  = $prop->getAttributes();
-            foreach ($attributes as $attribute) {
-                if ($attribute->getName() === $atribute) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private function getAnnotetion(ReflectionProperty $prop, string $atribute)
-        {
-            $attributes  = $prop->getAttributes();
-            foreach ($attributes as $attribute) {
-                if ($attribute->getName() === $atribute) {
-                    return $arguments = $attribute->getArguments();
-                }
-            }
-            return null;
         }
 
         private function ExecuteMethod(ReflectionMethod $method, $entity, array &$args)
@@ -515,7 +437,7 @@
 
         private function executeControllerAdviceException($entityName, Throwable $throwable, DependencyManager $Dmanager){
             if(isset(self::$controllerErrorReflect)){
-                self::$controllerError = $this->getInstanceBy(self::$controllerErrorReflect, $Dmanager);
+                self::$controllerError = $Dmanager->tryCreate(self::$controllerErrorReflect);
                 self::$controllerError->onError($throwable);
             }else{
                 $error = $throwable->getMessage();
@@ -547,7 +469,7 @@
                     $atribute = $reflect->getAttributes(Controller::class);
     
                     if (isset($atribute) && !empty($atribute)){
-                        $this->mappingControllerClass(new ReflectionClass($class));
+                        $this->mappingControllerClass($reflect);
                     }
     
                     $parentClass = $reflect->getParentClass();
@@ -572,7 +494,7 @@
                     $atribute = $reflect->getAttributes(Controller::class);
     
                     if (isset($atribute) && !empty($atribute)){
-                        $this->mappingControllerClass(new ReflectionClass($class));
+                        $this->mappingControllerClass($reflect);
                         $_SESSION["selectedClass"][] =  $class;
                     }
     

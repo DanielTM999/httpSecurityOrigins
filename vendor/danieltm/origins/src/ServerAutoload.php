@@ -40,10 +40,13 @@
                             $v = str_replace('/', '\\', $v);
                             if(strpos($directory, $v) !== false){
                                 $execute = false;
+                            }else if(in_array($item, $ignoreList)){
+                                $execute = false;
                             }
                         }
                     }
-                    if (strpos($directory, "composer") !== false || strpos($directory, "git") !== false || strpos($directory, "autoload") !== false || strpos($directory, "danieltm/origins" ) !== false || strpos($directory, "http-security\\vendor") !== false) {
+
+                    if (preg_match('#composer|git|autoload|test|danieltm[/\\\\]origins|http-security[/\\\\]vendor#', $directory)) {
                         $execute = false;
                     }
 
@@ -83,7 +86,11 @@
             $this->autoloadFromDirectory($dirBase);
             $this->loadedFiles = array_reverse($this->loadedFiles);
             foreach($this->loadedFiles as $file){
-                require_once $file;
+                try {
+                    require_once $file;
+                } catch (\Throwable $e) {
+                    throw new \Exception("Erro ao carregar o arquivo '$file': possível redefinição de classe já carregada.");
+                }
             }
 
             $classes = get_declared_classes();
@@ -151,7 +158,11 @@
             if(isset($cache["loadedFiles"])){
                 $loadedFiles = $cache["loadedFiles"];
                 foreach($loadedFiles as $file){
-                    require_once $file;
+                    try {
+                        require_once $file;
+                    } catch (\Throwable $e) {
+                        throw new \Exception("Erro ao carregar o arquivo '$file': possível redefinição de classe já carregada.");
+                    }
                 }
 
                 $intializers = null;
@@ -180,6 +191,9 @@
         }
 
         private function getBaseDir(): string{
+            if(isset($_ENV["base.dir"])){
+                return $_ENV["base.dir"];
+            }
             $dirLibrary = __DIR__;
 
             while (strpos($dirLibrary, 'vendor') !== false) {
