@@ -80,6 +80,17 @@
                     $userEnv = null;
                 }
 
+                if(!isset($userDatails)){
+                    throw new AuthorizationException("not authorized");
+                }else{
+                    $roles = $this->httpManager->getDefaultRoles();
+                    if(!empty($roles)){
+                        if (empty(array_intersect($roles, $userDatails->getRoles()))) {
+                            throw new AuthorityAuthorizationException("not authorized [not conteins permission Role]");
+                        }
+                    }
+                }
+
                 if($environment === ""){
                     
                 }else if(!isset($userEnv)){
@@ -88,15 +99,6 @@
                     throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]", 0, $userDatails->getEnvironment(), $environment);
                 }
 
-                if(!isset($userDatails)){
-                    throw new AuthorizationException("not authorized ");
-                }else{
-                    if(!empty($roles)){
-                        if (empty(array_intersect($roles, $userDatails->getRoles()))) {
-                            throw new AuthorityAuthorizationException("not authorized [not conteins permission Role]");
-                        }
-                    }
-                }
             }
         }
 

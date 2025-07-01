@@ -25,6 +25,7 @@
         private static int $sessionPolice = SessionPolice::STATELESS;
         private static $requests = [];
         private static $filters = [];
+        private static $defaultRoles = [];
         private bool $anyPublic = true;
         private string $defaultEnv = "";
         
@@ -78,6 +79,10 @@
 
         public function getDefaultEnvaroment(){
             return $this->defaultEnv;
+        }
+
+        public function getDefaultRoles(){
+            return self::$defaultRoles;
         }
 
     }
@@ -164,10 +169,15 @@
             $this->config = $config;
         }
 
-        public function authenticate(): void{
+        public function authenticate(array $defaultRoles = []): void{
             $reflect = new ReflectionClass($this->config);
             $var = $reflect->getProperty("anyPublic");
+            $var->setAccessible(true);
             $var->setValue($this->config, false);
+
+            $varDefaultRoles = $reflect->getProperty("defaultRoles");
+            $varDefaultRoles->setAccessible(true);
+            $varDefaultRoles->setValue($this->config, $defaultRoles);
         }
 
         public function permitAll(): void{
