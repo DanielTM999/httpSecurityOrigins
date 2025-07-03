@@ -1,9 +1,7 @@
 <?php
     namespace Daniel\HttpSecurity;
-    
-    use Daniel\Origins\DependencyManager;
-    use Daniel\Origins\HttpMethod;
-    use Daniel\Origins\Inject;
+
+    use Daniel\Origins\Annotations\Inject;
     use Daniel\Origins\Middleware;
     use Daniel\Origins\Request;
     use Exception;

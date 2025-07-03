@@ -1,8 +1,9 @@
 <?php
     namespace Daniel\HttpSecurity;
+
+    use Daniel\Origins\Annotations\FilterPriority;
+    use Daniel\Origins\Annotations\Inject;
     use Daniel\Origins\DependencyManager;
-    use Daniel\Origins\FilterPriority;
-    use Daniel\Origins\Inject;
     use Daniel\Origins\OnInit;
     use InvalidArgumentException;
     use Override;
@@ -11,7 +12,7 @@
     #[FilterPriority(99999)]
     class HttpSecurityConfigurarInit extends OnInit{
 
-        #[Inject]
+        #[Inject()]
         private DependencyManager $manager;
 
         #[Override]

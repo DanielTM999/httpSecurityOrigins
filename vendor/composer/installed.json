@@ -2,23 +2,23 @@
     "packages": [
         {
             "name": "danieltm/origins",
-            "version": "V2.0.0",
-            "version_normalized": "2.0.0.0",
+            "version": "V2.0.1",
+            "version_normalized": "2.0.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/DanielTM999/origins.git",
-                "reference": "723509e561d7ead8702207b26041d7dfbe0eeb4b"
+                "reference": "92d114c28d95f0d4023909fbe4cbffa0d77f5c28"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/723509e561d7ead8702207b26041d7dfbe0eeb4b",
-                "reference": "723509e561d7ead8702207b26041d7dfbe0eeb4b",
+                "url": "https://api.github.com/repos/DanielTM999/origins/zipball/92d114c28d95f0d4023909fbe4cbffa0d77f5c28",
+                "reference": "92d114c28d95f0d4023909fbe4cbffa0d77f5c28",
                 "shasum": ""
             },
             "require": {
                 "php": "^8.0"
             },
-            "time": "2025-04-27T01:58:17+00:00",
+            "time": "2025-07-03T01:31:47+00:00",
             "type": "library",
             "installation-source": "source",
             "autoload": {
@@ -37,7 +37,7 @@
             ],
             "support": {
                 "issues": "https://github.com/DanielTM999/origins/issues",
-                "source": "https://github.com/DanielTM999/origins/tree/V2.0.0"
+                "source": "https://github.com/DanielTM999/origins/tree/V2.0.1"
             },
             "install-path": "../danieltm/origins"
         }

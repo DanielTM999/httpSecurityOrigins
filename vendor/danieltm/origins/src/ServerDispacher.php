@@ -1,19 +1,26 @@
 <?php
     namespace Daniel\Origins;
 
+    use Daniel\Origins\Exceptions\CompositeException;
     use Exception;
     use Override;
     use ReflectionClass;
     use ReflectionMethod;
     use Throwable;
     use Daniel\Origins\HttpMethod;
+    use Daniel\Origins\Annotations\ContentType;
+    use Daniel\Origins\Annotations\Controller;
+    use Daniel\Origins\Annotations\Get;
+    use Daniel\Origins\Annotations\Post;
+    use Daniel\Origins\Annotations\Put;
+    use Daniel\Origins\Annotations\Delete;
+    use Daniel\Origins\Annotations\Patch;
 
     class ServerDispacher extends Dispacher{
         public static $routes = [];
         private static $middlewares = [];
-        private static $aspects = [];
-        private static ReflectionClass $controllerErrorReflect;
-        private static ControllerAdvice $controllerError;
+        private static ?ReflectionClass $controllerErrorReflect;
+        private static ?ControllerAdvice $controllerError;
 
         
         #[Override]
@@ -22,10 +29,9 @@
                 $loaders = $_SESSION["origins.loaders"];    
                 $controllers = $loaders["controllers"] ?? [];
                 $middlewares = $loaders["middlewares"] ?? [];
-                $aspects = $loaders["aspects"] ?? [];
                 $routes = $loaders["routes"] ?? [];
                 $controllerAdvice = $loaders["controllerAdvice"] ?? null;
-
+                self::$controllerError = null;
                 if(isset($controllerAdvice)){
                     $reflect = new ReflectionClass($controllerAdvice);
                     self::$controllerErrorReflect = $reflect;
@@ -60,11 +66,6 @@
                     self::$middlewares[] = $reflect;
                 }
 
-                foreach($aspects as $aspect){
-                    $reflect = new ReflectionClass($aspect);
-                    self::$aspects[] = $reflect;
-                }
-
             }else{
                 $this->mapIfNotloaded();
             }
@@ -80,17 +81,7 @@
 
                 return $priorityB <=> $priorityA;
             });
-            usort(self::$aspects, function($a, $b){
-                $attributesA = $a->getAttributes(FilterPriority::class);
-                $attributesB = $b->getAttributes(FilterPriority::class);
-
-                $priorityAArgs0 = isset($attributesA[0]) ? $attributesA[0]->getArguments() : [0];
-                $priorityBArgs0 = isset($attributesB[0]) ? $attributesB[0]->getArguments() : [0];
-                $priorityA = isset($priorityAArgs0[0]) ? $priorityAArgs0[0] : 0;
-                $priorityB = isset($priorityBArgs0[0]) ? $priorityBArgs0[0] : 0;
-
-                return $priorityB <=> $priorityA;
-            });
+            
         }
 
         #[Override]
@@ -142,27 +133,16 @@
 
 
                     $instance = $Dmanager->tryCreate($route->class);
-                    $method = $route->methodClass;
+                    $method = new ReflectionMethod($instance, $route->methodClass->getName());
 
                     try {
-                        $methodArgs = $this->getMainMethodExecuteArgs($method, $req);
+                        $methodArgs = $this->getMainMethodExecuteArgs($method, $route->methodClass, $req);
                         foreach(self::$middlewares as $md){
                             $instanceMiddleware = $Dmanager->tryCreate($md);
                             $this->ExecuteMiddleware($instanceMiddleware, $req);
                         }
-                        $instanceAspectList = [];
 
-                        foreach(self::$aspects as $aspect){
-                            $instanceAspect = $Dmanager->tryCreate($aspect);
-                            $instanceAspectList[] = &$instanceAspect;
-                            $this->executeAspect($instanceAspect, $method, $methodArgs, $instance, "before");
-                        }
-
-                        $this->ExecuteMethod($method, $instance, $methodArgs);
-
-                        foreach($instanceAspectList as $instanceAspect){
-                            $this->executeAspect($instanceAspect, $method, $methodArgs, $instance, "after");
-                        }
+                        $this->ExecuteMethod($method, $route->methodClass, $instance, $methodArgs);
                     } catch (\Throwable $th) {
                         $this->executeControllerAdviceException($route->class, $th, $Dmanager);
                     }
@@ -362,15 +342,18 @@
             return $html;
         }
 
-        private function ExecuteMethod(ReflectionMethod $method, $entity, array &$args)
+        private function ExecuteMethod(ReflectionMethod $method, ReflectionMethod $realMethod, $entity, array &$args)
         {   
             try {
                 $parameters = $method->getParameters();
+                
                 if ($parameters !== null) {
                     $result = $method->invokeArgs($entity, $args);
+                    $this->setContentType($realMethod);
                     $this->echoResult($result);
                 } else {
                     $result = $method->invoke($entity);
+                    $this->setContentType($realMethod);
                     $this->echoResult($result);
                 }
             } catch (Exception $e) {
@@ -378,19 +361,27 @@
             }
         }
 
-        private function executeAspect(Aspect $aspect, ReflectionMethod &$method, array &$args, object &$controllerEntity, string $methodType){
-            try {
-                if($methodType === "before"){
-                    $aspect->aspectBefore($controllerEntity, $method, $args);
-                }else if($methodType === "after"){
-                    $aspect->aspectAfter($controllerEntity, $method, $args);
+        private function setContentType(ReflectionMethod $realMethod){
+            if(AnnotationsUtils::isAnnotationPresent($realMethod, ContentType::class)){
+                $headers = headers_list();
+                $contentTypeSet = false;
+
+                foreach ($headers as $header) {
+                    if (stripos($header, 'Content-Type:') === 0) {
+                        $contentTypeSet = true;
+                        break;
+                    }
                 }
-            } catch (Throwable $th) {
-                throw $th;
+                if($contentTypeSet) return;
+
+                $atrubuteArgs = AnnotationsUtils::getAnnotationArgs($realMethod, ContentType::class);
+
+                $contentType = $atrubuteArgs[0] ?? ContentType::HTML;
+                header('Content-Type: ' . $contentType);
             }
         }
 
-        private function getMainMethodExecuteArgs(ReflectionMethod $method, Request $req): array{
+        private function getMainMethodExecuteArgs(ReflectionMethod $method, ReflectionMethod $realMethod, Request $req): array{
             $args = [];
 
             try{
@@ -406,6 +397,9 @@
                                     break;
                                 case Response::class:
                                     $args[] = new Response();
+                                    break;
+                                case Module::class:
+                                    $args[] = ModuleManager::getCurrentModule($realMethod);
                                     break;
                                 default:
                                     $args[] = null;
@@ -440,8 +434,27 @@
                 self::$controllerError = $Dmanager->tryCreate(self::$controllerErrorReflect);
                 self::$controllerError->onError($throwable);
             }else{
-                $error = $throwable->getMessage();
-                echo "<b>Error:</b> [$entityName] --> $error";
+                http_response_code(500);
+                header('Content-Type: application/json; charset=utf-8');
+                
+                if($throwable instanceof CompositeException){
+                    $messageList = $throwable->getErrorsAsString();
+                }else{
+                    $messageList = [
+                        $throwable->getMessage()
+                    ];
+                }
+                $response = [
+                    'status' => 'error',
+                    'httpCode' => 500,
+                    'timestamp' => date('c'),
+                    'controller' => $entityName,
+                    'exception' => get_class($throwable),
+                    'messages' => $messageList,
+                    'code' => $throwable->getCode(),
+                    'stackTrace' => explode("\n", $throwable->getTraceAsString())
+                ];
+                echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
             }
         }
 
