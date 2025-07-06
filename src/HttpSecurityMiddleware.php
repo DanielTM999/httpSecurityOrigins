@@ -64,13 +64,14 @@
                 }catch(\Throwable $th){
                     $environment = $this->httpManager->getDefaultEnvaroment() ?? "";
                 }
-                $userDatails = SecurityContext::getContext();
 
                 if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
                     $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
                 }else{
                     $_SESSION["SessionPolice"] = SessionPolice::STATEFULL;
                 }
+
+                $userDatails = SecurityContext::getContext();
 
                 try {
                     $userEnv = $userDatails->getEnvironment();

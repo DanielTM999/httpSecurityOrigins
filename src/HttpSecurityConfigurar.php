@@ -9,10 +9,10 @@
     use Override;
     use ReflectionClass;
 
-    #[FilterPriority(99999)]
+    #[FilterPriority(PHP_INT_MAX)]
     class HttpSecurityConfigurarInit extends OnInit{
 
-        #[Inject()]
+        #[Inject]
         private DependencyManager $manager;
 
         #[Override]
