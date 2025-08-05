@@ -1,7 +1,8 @@
 <?php
     namespace Daniel\Origins;
 
-    use RuntimeException;
+use Daniel\Origins\Serialization\JsonObject;
+use RuntimeException;
 
     class Log{
         
@@ -60,11 +61,17 @@
         private static function serializateMessage($message){
             if(!isset($message)){
                 return "null";
+            }elseif (is_bool($message)) {
+                return $message ? 'true' : 'false';
             }else if (is_array($message)) {
                 return json_encode($message); 
             } elseif (is_object($message)) {
-                if (self::isSerializable($message)) {
-                    return serialize($message);
+                try{
+                    return JsonObject::defaultSerialization($message);
+                }catch(\Exception $e){
+                    if (self::isSerializable($message)) {
+                        return serialize($message);
+                    }
                 }
                 return "[unserializable object of type " . get_class($message) . "]";
             }else{

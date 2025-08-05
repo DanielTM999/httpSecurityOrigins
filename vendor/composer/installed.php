@@ -3,7 +3,7 @@
         'name' => 'danieltm/http-security',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '2a595dd6ea8efd182b44b8ec8866833b4151cfde',
+        'reference' => 'a61a667882ac0ee2a5d4dafca8c860a6dbdd80f6',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'danieltm/http-security' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '2a595dd6ea8efd182b44b8ec8866833b4151cfde',
+            'reference' => 'a61a667882ac0ee2a5d4dafca8c860a6dbdd80f6',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -22,7 +22,7 @@
         'danieltm/origins' => array(
             'pretty_version' => 'V2.0.1',
             'version' => '2.0.1.0',
-            'reference' => '92d114c28d95f0d4023909fbe4cbffa0d77f5c28',
+            'reference' => 'fa6e434b3fe684c772ae3e1f843d1339e72caa3b',
             'type' => 'library',
             'install_path' => __DIR__ . '/../danieltm/origins',
             'aliases' => array(),

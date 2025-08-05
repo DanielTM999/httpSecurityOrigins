@@ -94,14 +94,7 @@
             $this->loadModulesConfigs();
             $this->autoloadFromDirectory($dirBase);
             $this->loadedFiles = array_reverse($this->loadedFiles);
-            foreach($this->loadedFiles as $file){
-                try {
-                    require_once $file;
-                } catch (\Throwable $e) {
-                    throw new \Exception("Erro ao carregar o arquivo '$file': possível redefinição de classe já carregada.");
-                }
-            }
-
+            $this->loadedFiles = $this->loadWithDependencies($this->loadedFiles);
             $classes = get_declared_classes();
             $configurations = [];
             $controllers = [];
@@ -158,6 +151,47 @@
             $this->setSessionsCash($dependecies, $controllers, $configurations, $middlewares, $controllerAdvice, $aspects, []);
         }
 
+        function getInterfacesFromFile(string $file): array {
+            $content = file_get_contents($file);
+            $interfaces = [];
+
+           if (preg_match('/^\s*(?:final\s+|abstract\s+)?class\s+\w+/mi', $content)) {
+                if (preg_match('/implements\s+([^{\s]+)/i', $content, $matches)) {
+                    $impls = explode(',', $matches[1]);
+                    foreach ($impls as $impl) {
+                        $interfaces[] = trim($impl);
+                    }
+                }
+            }
+
+            return $interfaces;
+        }
+
+        private function loadWithDependencies(array $files): array {
+            $pending = $files;
+            $interfaceFiles = [];
+            $inOrderFiles = [];
+
+            foreach ($pending as $file) {
+                $interfaces = $this->getInterfacesFromFile($file);
+                        
+                if (!empty($interfaces)) {
+                    $interfaceFiles[] = $file;
+                    continue; 
+                }
+
+                require_once $file;
+                $inOrderFiles[] = $file;
+            }
+
+            $interfaceFiles = array_unique($interfaceFiles);
+            foreach ($interfaceFiles as $interfaceFile) {
+                require_once $interfaceFile;
+                $inOrderFiles[] = $interfaceFile;
+            }
+            return $inOrderFiles;
+        }
+
         private function loadElementsByCache($cache){
             if(isset($cache["baseDir"])){
                 $baseDir = $cache["baseDir"];
@@ -202,21 +236,22 @@
         }
 
         private function getBaseDir(): string{
-            if(isset($_ENV["base.dir"])){
-                return $_ENV["base.dir"];
-            }
-            $dirLibrary = __DIR__;
+            // if(isset($_ENV["base.dir"])){
+            //     return $_ENV["base.dir"];
+            // }
+            // $dirLibrary = __DIR__;
 
-            while (strpos($dirLibrary, 'vendor') !== false) {
-                $dirLibrary = dirname($dirLibrary);
-            }
+            // while (strpos($dirLibrary, 'vendor') !== false) {
+            //     $dirLibrary = dirname($dirLibrary);
+            // }
 
-            $dirBase = $dirLibrary;
-            $vendorPos = strpos($dirBase, '\vendor');
-            if ($vendorPos !== false) {
-                $dirBase = substr($dirBase, 0, $vendorPos);
-            }
-            return $dirBase;
+            // $dirBase = $dirLibrary;
+            // $vendorPos = strpos($dirBase, '\vendor');
+            // if ($vendorPos !== false) {
+            //     $dirBase = substr($dirBase, 0, $vendorPos);
+            // }
+            // return $dirBase;
+            return $_SERVER['DOCUMENT_ROOT'];
         }
 
         private function containsClassView($directory) {
@@ -296,6 +331,20 @@
             }
 
             $this->modules = $this->parseModules($moduleContent);
+            if (isset($this->modules['global']) && is_array($this->modules['global'])) {
+                $globalProps = $this->modules['global'];
+                $this->modules["origins.module.global"] = $globalProps;
+                unset($this->modules['global']);
+
+                foreach ($this->modules as &$module) {
+                    foreach ($globalProps as $key => $value) {
+                        if (!array_key_exists($key, $module)) {
+                            $module[$key] = $value;
+                        }
+                    }
+                }
+                unset($module);
+            }
         }
 
         private function extractModulesBlock(string $content): ?string {
