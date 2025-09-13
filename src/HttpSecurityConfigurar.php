@@ -4,7 +4,8 @@
     use Daniel\Origins\Annotations\FilterPriority;
     use Daniel\Origins\Annotations\Inject;
     use Daniel\Origins\DependencyManager;
-    use Daniel\Origins\OnInit;
+use Daniel\Origins\Log;
+use Daniel\Origins\OnInit;
     use InvalidArgumentException;
     use Override;
     use ReflectionClass;
@@ -32,6 +33,7 @@
         
         public function sessionPolice(int $police): HttpSecurityConfigurar{
             self::$sessionPolice = $police;
+            $_SESSION["SessionPolice"] = $police;
             return $this;
         }
 

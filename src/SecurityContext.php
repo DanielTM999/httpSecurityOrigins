@@ -1,15 +1,17 @@
 <?php
     namespace Daniel\HttpSecurity;
     use Daniel\HttpSecurity\AuthContext;
+    use Daniel\Origins\Log;
 
     class SecurityContext{   
         private static ?AuthContext $context = null;
 
         public static function getContext(): ?AuthContext{
+            $sessionPolice = $_SESSION["SessionPolice"] ?? SessionPolice::STATELESS;
             if(!isset(self::$context)){
                 self::$context=null;
             }
-            if (isset($_SESSION["SessionPolice"]) && $_SESSION["SessionPolice"] !== SessionPolice::STATELESS) {
+            if ($sessionPolice !== SessionPolice::STATELESS) {
                 if (isset($_SESSION["Securitycontext"])) {
                     return unserialize($_SESSION["Securitycontext"]);
                 }else{
@@ -21,27 +23,18 @@
         }
 
         public static function setContext(AuthContext $context){
-            if(isset($_SESSION["SessionPolice"])){
-                if($_SESSION["SessionPolice"] === SessionPolice::STATELESS){
-                    self::$context = $context;
-                }else{
-                    $_SESSION["Securitycontext"] = serialize($context);
-                }
-            }else{
+            $sessionPolice = $_SESSION["SessionPolice"] ?? SessionPolice::STATELESS;
+            Log::info($sessionPolice);
+            if($sessionPolice === SessionPolice::STATELESS){
                 self::$context = $context;
+            }else{
+                $_SESSION["Securitycontext"] = serialize($context);
             }
         }
 
         public static function clearContext(){
-            if(isset($_SESSION["SessionPolice"])){
-                if($_SESSION["SessionPolice"] === SessionPolice::STATELESS){
-                    self::$context = null;
-                }else{
-                    unset($_SESSION["Securitycontext"]);
-                }
-            }else{
-                self::$context = null;
-            }
+            self::$context = null;
+            unset($_SESSION["Securitycontext"]);
         }
     }
 ?>
