@@ -1,7 +1,6 @@
 <?php
     namespace Daniel\HttpSecurity;
     use Daniel\HttpSecurity\AuthContext;
-    use Daniel\Origins\Log;
 
     class SecurityContext{   
         private static ?AuthContext $context = null;
