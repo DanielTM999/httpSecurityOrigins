@@ -24,7 +24,6 @@
 
         public static function setContext(AuthContext $context){
             $sessionPolice = $_SESSION["SessionPolice"] ?? SessionPolice::STATELESS;
-            Log::info($sessionPolice);
             if($sessionPolice === SessionPolice::STATELESS){
                 self::$context = $context;
             }else{
