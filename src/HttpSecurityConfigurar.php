@@ -4,8 +4,8 @@
     use Daniel\Origins\Annotations\FilterPriority;
     use Daniel\Origins\Annotations\Inject;
     use Daniel\Origins\DependencyManager;
-use Daniel\Origins\Log;
-use Daniel\Origins\OnInit;
+    use Daniel\Origins\Log;
+    use Daniel\Origins\OnInit;
     use InvalidArgumentException;
     use Override;
     use ReflectionClass;
@@ -28,6 +28,7 @@ use Daniel\Origins\OnInit;
         private static $requests = [];
         private static $filters = [];
         private static $defaultRoles = [];
+        private static ?AuthorizationValidator $defaultValidator = null;
         private bool $anyPublic = true;
         private string $defaultEnv = "";
         
@@ -88,6 +89,10 @@ use Daniel\Origins\OnInit;
             return self::$defaultRoles;
         }
 
+        public function getDefaultValidator(): ?AuthorizationValidator{
+            return self::$defaultValidator;
+        }
+
     }
 
     class RequestMatcher{
@@ -95,15 +100,17 @@ use Daniel\Origins\OnInit;
         private $httpMethod;
         private bool $needAuth;
         private array $roles;
+        private ?AuthorizationValidator $validator;
         private string $environment;
 
-        public function __construct(string $route, $httpMethod, bool $permit, array $roles, string $environment)
+        public function __construct(string $route, $httpMethod, bool $permit, array $roles, string $environment, ?AuthorizationValidator $validator = null)
         {
             $this->route = $route;
             $this->httpMethod = $httpMethod;
             $this->needAuth = $permit;
             $this->roles = $roles;
             $this->environment = $environment;
+            $this->validator = $validator;
         }
 
         public function getRoute(): string{
@@ -121,6 +128,9 @@ use Daniel\Origins\OnInit;
         }
         public function getenvironment(): string{
             return $this->environment;
+        }
+        public function getValidator(): ?AuthorizationValidator{
+            return $this->validator;
         }
     }
 
@@ -155,12 +165,28 @@ use Daniel\Origins\OnInit;
             $this->environment = $environment ?? "";
         }
 
-        public function authenticate(array $roles = []): void{
-            $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, true, $roles, $this->environment));
+        public function authenticate(array|string|AuthorizationValidator $authorization = []): void{
+            [$roles, $validator] = self::normalizeAuthorization($authorization);
+            $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, true, $roles, $this->environment, $validator));
         }
 
         public function permitAll(): void{
             $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, false, [], $this->environment));
+        }
+
+        private static function normalizeAuthorization(array|string|AuthorizationValidator $authorization): array{
+            if($authorization instanceof AuthorizationValidator){
+                return [[], $authorization];
+            }
+            if(is_string($authorization)){
+                $authorization = [$authorization];
+            }
+            foreach($authorization as $role){
+                if(!is_string($role)){
+                    throw new InvalidArgumentException('As roles devem ser strings ou um AuthorizationValidator deve ser informado.');
+                }
+            }
+            return [$authorization, null];
         }
     }
 
@@ -172,7 +198,8 @@ use Daniel\Origins\OnInit;
             $this->config = $config;
         }
 
-        public function authenticate(array $defaultRoles = []): void{
+        public function authenticate(array|string|AuthorizationValidator $authorization = []): void{
+            [$defaultRoles, $defaultValidator] = self::normalizeAuthorization($authorization);
             $reflect = new ReflectionClass($this->config);
             $var = $reflect->getProperty("anyPublic");
             $var->setAccessible(true);
@@ -181,12 +208,31 @@ use Daniel\Origins\OnInit;
             $varDefaultRoles = $reflect->getProperty("defaultRoles");
             $varDefaultRoles->setAccessible(true);
             $varDefaultRoles->setValue($this->config, $defaultRoles);
+
+            $varDefaultValidator = $reflect->getProperty("defaultValidator");
+            $varDefaultValidator->setAccessible(true);
+            $varDefaultValidator->setValue($this->config, $defaultValidator);
         }
 
         public function permitAll(): void{
             $reflect = new ReflectionClass($this->config);
             $var = $reflect->getProperty("anyPublic");
             $var->setValue($this->config, true);
+        }
+
+        private static function normalizeAuthorization(array|string|AuthorizationValidator $authorization): array{
+            if($authorization instanceof AuthorizationValidator){
+                return [[], $authorization];
+            }
+            if(is_string($authorization)){
+                $authorization = [$authorization];
+            }
+            foreach($authorization as $role){
+                if(!is_string($role)){
+                    throw new InvalidArgumentException('As roles devem ser strings ou um AuthorizationValidator deve ser informado.');
+                }
+            }
+            return [$authorization, null];
         }
     }
 

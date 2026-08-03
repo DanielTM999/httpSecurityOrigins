@@ -83,11 +83,7 @@
                     throw new AuthorizationException("not authorized");
                 }else{
                     $roles = $this->httpManager->getDefaultRoles();
-                    if(!empty($roles)){
-                        if (empty(array_intersect($roles, $userDatails->getRoles()))) {
-                            throw new AuthorityAuthorizationException("not authorized [not conteins permission Role]");
-                        }
-                    }
+                    $this->validateAuthorization($userDatails, $roles, $this->httpManager->getDefaultValidator());
                 }
 
                 if($environment === ""){
@@ -105,7 +101,7 @@
             $this->applyFilters($req);
             if($routeSecurity === $requestPath || $verifiMethod){
                 if($r->getNeedAuth()){
-                    if($this->isAuth($r->getRoles(), $r->getenvironment())){
+                    if($this->isAuth($r->getRoles(), $r->getenvironment(), $r->getValidator())){
                         return true;
                     }
                     throw new AuthorizationException("not authorized ");
@@ -116,7 +112,7 @@
             return false;
         }
 
-        public function isAuth($roles, $environment): bool{
+        public function isAuth(array $roles, $environment, ?AuthorizationValidator $validator = null): bool{
             try{
                 $environment = $environment ?? $this->httpManager->getDefaultEnvaroment() ?? "";
             }catch(\Throwable $th){
@@ -142,13 +138,16 @@
                     throw new EnvironmentAuthorizationException("not authorized [not conteins permission Enviroment]", 0, $userDatails->getEnvironment(), $environment);
                 }
             }
-            if(!empty($roles)){
-                if (!empty(array_intersect($roles, $userDatails->getRoles()))) {
-                    return true;
-                }
+            $this->validateAuthorization($userDatails, $roles, $validator);
+            return true;
+        }
+
+        private function validateAuthorization(AuthContext $context, array $roles, ?AuthorizationValidator $validator): void{
+            if($validator !== null && !$validator->isValid($context)){
+                throw new AuthorityAuthorizationException($validator->getMessage());
+            }
+            if(!empty($roles) && empty(array_intersect($roles, $context->getRoles()))){
                 throw new AuthorityAuthorizationException("not authorized [not conteins permission Role]");
-            }else{
-                return true;
             }
         }
 

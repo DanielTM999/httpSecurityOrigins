@@ -80,6 +80,33 @@ Crie uma classe que estenda `OnInit` para configurar as dependências iniciais:
         }
 ```
 
+## Validator de autorização customizado
+
+Além de uma string ou lista de roles, `authenticate` aceita uma instância de
+`AuthorizationValidator`. Isso permite validar flags ou qualquer informação do
+`AuthContext` sem transformar a regra em uma role artificial:
+
+```php
+use Daniel\HttpSecurity\AuthContext;
+use Daniel\HttpSecurity\AuthorizationValidator;
+
+final class SystemAdministratorValidator extends AuthorizationValidator
+{
+    public function isValid(AuthContext $context): bool
+    {
+        $principal = $context->getUserArgs()['principal'] ?? [];
+        return ($principal['systemAdministrator'] ?? false) === true;
+    }
+}
+
+$security->Request('/system/**')
+    ->authenticate(new SystemAdministratorValidator());
+
+// As formas anteriores continuam válidas:
+$security->Request('/reports')->authenticate('report.view');
+$security->Request('/financial')->authenticate(['fin.list', 'fin.process']);
+```
+
 ## Contribuição
 
 Sinta-se à vontade para abrir issues e enviar pull requests. Toda contribuição é bem-vinda!
