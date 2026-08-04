@@ -94,8 +94,7 @@ final class SystemAdministratorValidator extends AuthorizationValidator
 {
     public function isValid(AuthContext $context): bool
     {
-        $principal = $context->getUserArgs()['principal'] ?? [];
-        return ($principal['systemAdministrator'] ?? false) === true;
+        return in_array('SYSTEM_ADMINISTRATOR', $context->getRoles(), true);
     }
 }
 
@@ -106,6 +105,34 @@ $security->Request('/system/**')
 $security->Request('/reports')->authenticate('report.view');
 $security->Request('/financial')->authenticate(['fin.list', 'fin.process']);
 ```
+
+## Autorização por atributo
+
+Controllers e endpoints também podem declarar a mesma regra de autorização
+com `#[Autorize]`. O argumento aceita uma role, uma lista de roles ou uma
+instância de `AuthorizationValidator`, exatamente como `authenticate`:
+
+```php
+use Daniel\HttpSecurity\Annotations\Autorize;
+
+#[Autorize('laudo.view')]
+final class LaudoController
+{
+    #[Autorize(['laudo.create', 'laudo.update'])]
+    public function save(): void
+    {
+    }
+
+    #[Autorize(new SystemAdministratorValidator())]
+    public function systemConfiguration(): void
+    {
+    }
+}
+```
+
+O atributo pode ser aplicado na classe ou no método. Quando ambos estiverem
+presentes, a regra do método substitui a regra da classe. O nome em inglês
+`#[Authorize]` também está disponível como alias.
 
 ## Contribuição
 

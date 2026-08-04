@@ -6,7 +6,6 @@
     use Daniel\Origins\DependencyManager;
     use Daniel\Origins\Log;
     use Daniel\Origins\OnInit;
-    use InvalidArgumentException;
     use Override;
     use ReflectionClass;
 
@@ -166,28 +165,21 @@
         }
 
         public function authenticate(array|string|AuthorizationValidator $authorization = []): void{
-            [$roles, $validator] = self::normalizeAuthorization($authorization);
-            $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, true, $roles, $this->environment, $validator));
+            $requirement = AuthorizationRequirement::from($authorization);
+            $this->config->AddRequestMatcher(new RequestMatcher(
+                $this->route,
+                $this->method,
+                true,
+                $requirement->getRoles(),
+                $this->environment,
+                $requirement->getValidator()
+            ));
         }
 
         public function permitAll(): void{
             $this->config->AddRequestMatcher(new RequestMatcher($this->route, $this->method, false, [], $this->environment));
         }
 
-        private static function normalizeAuthorization(array|string|AuthorizationValidator $authorization): array{
-            if($authorization instanceof AuthorizationValidator){
-                return [[], $authorization];
-            }
-            if(is_string($authorization)){
-                $authorization = [$authorization];
-            }
-            foreach($authorization as $role){
-                if(!is_string($role)){
-                    throw new InvalidArgumentException('As roles devem ser strings ou um AuthorizationValidator deve ser informado.');
-                }
-            }
-            return [$authorization, null];
-        }
     }
 
     class RequestMatcherActionAuthorizeAny{
@@ -199,7 +191,9 @@
         }
 
         public function authenticate(array|string|AuthorizationValidator $authorization = []): void{
-            [$defaultRoles, $defaultValidator] = self::normalizeAuthorization($authorization);
+            $requirement = AuthorizationRequirement::from($authorization);
+            $defaultRoles = $requirement->getRoles();
+            $defaultValidator = $requirement->getValidator();
             $reflect = new ReflectionClass($this->config);
             $var = $reflect->getProperty("anyPublic");
             $var->setAccessible(true);
@@ -220,20 +214,6 @@
             $var->setValue($this->config, true);
         }
 
-        private static function normalizeAuthorization(array|string|AuthorizationValidator $authorization): array{
-            if($authorization instanceof AuthorizationValidator){
-                return [[], $authorization];
-            }
-            if(is_string($authorization)){
-                $authorization = [$authorization];
-            }
-            foreach($authorization as $role){
-                if(!is_string($role)){
-                    throw new InvalidArgumentException('As roles devem ser strings ou um AuthorizationValidator deve ser informado.');
-                }
-            }
-            return [$authorization, null];
-        }
     }
 
     class SessionPolice{

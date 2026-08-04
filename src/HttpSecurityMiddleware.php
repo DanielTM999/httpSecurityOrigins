@@ -4,7 +4,6 @@
     use Daniel\Origins\Annotations\Inject;
     use Daniel\Origins\Middleware;
     use Daniel\Origins\Request;
-    use Exception;
     use Override;
 
     class HttpSecurityMiddleware extends Middleware{
@@ -143,12 +142,7 @@
         }
 
         private function validateAuthorization(AuthContext $context, array $roles, ?AuthorizationValidator $validator): void{
-            if($validator !== null && !$validator->isValid($context)){
-                throw new AuthorityAuthorizationException($validator->getMessage());
-            }
-            if(!empty($roles) && empty(array_intersect($roles, $context->getRoles()))){
-                throw new AuthorityAuthorizationException("not authorized [not conteins permission Role]");
-            }
+            AuthorizationManager::validate($context, $roles, $validator);
         }
 
         private function applyFilters(Request $req){
@@ -163,39 +157,4 @@
 
     }
 
-    class AuthorizationException extends Exception{
-
-        public function __construct($message = "Authorization error", $code = 0, Exception|null $previous = null)
-        {
-            parent::__construct($message, $code, $previous);
-        }
-    }
-
-    class AuthorityAuthorizationException extends Exception{
-
-        public function __construct($message = "Authorization Roles error", $code = 0, Exception|null $previous = null)
-        {
-            parent::__construct($message, $code, $previous);
-        }
-    }
-
-    class EnvironmentAuthorizationException extends Exception{
-        private string $getUserEnv;
-        private string $getTargetEnv;
-
-        public function __construct($message = "Authorization Environment error", $code = 0, string $getUserEnv, string $gettargetEnv, Exception|null $previous = null)
-        {
-            parent::__construct($message, $code, $previous);
-            $this->getUserEnv = $getUserEnv;
-            $this->getTargetEnv = $gettargetEnv;
-        }
-
-        public function getUserEnvaroment(): string{
-            return $this->getUserEnv;
-        }
-
-        public function getTargetEnvaroment(): string{
-            return $this->getTargetEnv;
-        }
-    }
 ?>

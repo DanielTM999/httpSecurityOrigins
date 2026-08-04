@@ -16,5 +16,8 @@
             "name": "Daniel Teixeira Melo"
         }
     ],
-    "minimum-stability": "stable"
+    "minimum-stability": "stable",
+    "scripts": {
+        "test": "php tests/AuthorizeTest.php"
+    }
 }
