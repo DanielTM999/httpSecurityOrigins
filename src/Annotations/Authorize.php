@@ -10,7 +10,6 @@ class Authorize
 {
     public function __construct(
         public array|string|AuthorizationValidator $authorization = []
-    ) {
-    }
+    ) {}
 }
 

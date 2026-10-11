@@ -15,6 +15,8 @@
         public function onPerrequest(Request $req) : void{
             $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $requestMethod = $_SERVER['REQUEST_METHOD'];
+            SecurityContext::getContext();
+            $this->applyFilters($req);
             foreach($this->httpManager->getREQUESTS() as $r) { 
                 $routeSecurity = $r->getRoute();
                 if(strpos($routeSecurity, "/**") !== false){
@@ -64,12 +66,6 @@
                     $environment = $this->httpManager->getDefaultEnvaroment() ?? "";
                 }
 
-                if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
-                    $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
-                }else{
-                    $_SESSION["SessionPolice"] = SessionPolice::STATEFULL;
-                }
-
                 $userDatails = SecurityContext::getContext();
 
                 try {
@@ -97,7 +93,6 @@
         }
 
         private function authAction($routeSecurity, $requestPath, RequestMatcher $r, Request $req, bool $verifiMethod = false){
-            $this->applyFilters($req);
             if($routeSecurity === $requestPath || $verifiMethod){
                 if($r->getNeedAuth()){
                     if($this->isAuth($r->getRoles(), $r->getenvironment(), $r->getValidator())){
@@ -118,12 +113,6 @@
                 $environment = $this->httpManager->getDefaultEnvaroment() ?? "";
             }
             
-            if($this->httpManager->getSessionPolice() === SessionPolice::STATELESS){
-                $_SESSION["SessionPolice"] = SessionPolice::STATELESS;
-            }else{
-                $_SESSION["SessionPolice"] = SessionPolice::STATEFULL;
-            }
-
             $userDatails = SecurityContext::getContext();
 
             if(!isset($userDatails)){

@@ -18,6 +18,9 @@
     ],
     "minimum-stability": "stable",
     "scripts": {
-        "test": "php tests/AuthorizeTest.php"
+        "test": [
+            "php tests/AuthorizeTest.php",
+            "php tests/PersistenceTest.php"
+        ]
     }
 }

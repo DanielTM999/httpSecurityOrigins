@@ -1,6 +1,7 @@
 <?php
     namespace Daniel\HttpSecurity;
 
+    use Daniel\HttpSecurity\Internal\SecurityConfiguration;
     use Daniel\Origins\Annotations\FilterPriority;
     use Daniel\Origins\Annotations\Inject;
     use Daniel\Origins\DependencyManager;
@@ -23,7 +24,6 @@
     }
     
     class HttpSecurityConfigurar{
-        private static int $sessionPolice = SessionPolice::STATELESS;
         private static $requests = [];
         private static $filters = [];
         private static $defaultRoles = [];
@@ -31,10 +31,38 @@
         private bool $anyPublic = true;
         private string $defaultEnv = "";
         
-        public function sessionPolice(int $police): HttpSecurityConfigurar{
-            self::$sessionPolice = $police;
-            $_SESSION["SessionPolice"] = $police;
+        public function sessionPolice(int $police, ?string $storage = null): HttpSecurityConfigurar{
+            if($storage !== null){
+                $storage = StatefulStorage::validate($storage);
+            }
+            SecurityConfiguration::setPolice($police);
+            if($storage !== null){
+                SecurityConfiguration::setStorage($storage);
+            }
             return $this;
+        }
+
+        public function statefulStorage(string $storage): HttpSecurityConfigurar{
+            SecurityConfiguration::setStorage($storage);
+            return $this;
+        }
+
+        public function getStatefulStorage(): string{
+            return SecurityConfiguration::storage();
+        }
+
+        public function cookieOptions(CookieOptions $options): HttpSecurityConfigurar{
+            SecurityConfiguration::setCookieOptions($options);
+            return $this;
+        }
+
+        public function contextCodec(AuthContextCodec $codec): HttpSecurityConfigurar{
+            SecurityConfiguration::setCodec($codec);
+            return $this;
+        }
+
+        public function getContextCodec(): AuthContextCodec{
+            return SecurityConfiguration::codec();
         }
 
         public function RequestPatterns(callable $f): HttpSecurityConfigurar{
@@ -50,7 +78,7 @@
             if ($filter instanceof SecurityFilterChain) {
                 self::$filters[] = $filter;
             } else {
-                throw new InvalidArgumentException('O filtro deve ser uma instância de SecurityFilterChain.');
+                throw new \InvalidArgumentException('O filtro deve ser uma instância de SecurityFilterChain.');
             }
             return $this;
         }
@@ -73,7 +101,7 @@
         }
 
         public function getSessionPolice(){
-            return self::$sessionPolice;
+            return SecurityConfiguration::police();
         }
 
         public function ispublic(){
@@ -214,11 +242,6 @@
             $var->setValue($this->config, true);
         }
 
-    }
-
-    class SessionPolice{
-        const STATEFULL = 0;
-        const STATELESS = 1;
     }
 
 ?>
